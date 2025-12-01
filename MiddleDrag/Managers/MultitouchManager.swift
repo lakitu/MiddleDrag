@@ -242,6 +242,7 @@ extension MultitouchManager: GestureRecognizerDelegate {
     
     func gestureRecognizerDidTap(_ recognizer: GestureRecognizer) {
         mouseGenerator.performClick()
+        AnalyticsManager.shared.trackGesture(.tap)
     }
     
     func gestureRecognizerDidBeginDragging(_ recognizer: GestureRecognizer) {
@@ -263,5 +264,6 @@ extension MultitouchManager: GestureRecognizerDelegate {
     
     func gestureRecognizerDidEndDragging(_ recognizer: GestureRecognizer) {
         mouseGenerator.endDrag()
+        AnalyticsManager.shared.trackGesture(.drag)
     }
 }

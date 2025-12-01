@@ -12,6 +12,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Application Lifecycle
     
     func applicationDidFinishLaunching(_ notification: Notification) {
+        //Initialize Analytics
+        AnalyticsManager.shared.initialize()
+        
         // Hide dock icon (menu bar app only)
         NSApp.setActivationPolicy(.accessory)
         
@@ -52,7 +55,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Check Accessibility permission AFTER UI is set up
         // This way the menu bar icon appears even if permission is missing
         if !AXIsProcessTrusted() {
+            AnalyticsManager.shared.trackAccessibilityPermission(granted: false)
             showAccessibilityAlert()
+        } else {
+            AnalyticsManager.shared.trackAccessibilityPermission(granted: true)
         }
         
         // Final cleanup of any stray windows
@@ -97,6 +103,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func applicationWillTerminate(_ notification: Notification) {
+        //Track app termination
+        AnalyticsManager.shared.trackTermination()
+        
         multitouchManager.stop()
         
         if preferences != nil {

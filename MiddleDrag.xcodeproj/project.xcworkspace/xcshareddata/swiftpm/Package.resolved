@@ -1,0 +1,24 @@
+{
+  "originHash" : "68bb0de6f0020590d76415c5f48b9c24791ca27c0069ca888c978ae192e205b3",
+  "pins" : [
+    {
+      "identity" : "sentry-cocoa",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/getsentry/sentry-cocoa.git",
+      "state" : {
+        "revision" : "1e740ef1dd4b25e6e7109ee807a03396695e631f",
+        "version" : "9.0.0"
+      }
+    },
+    {
+      "identity" : "swift-package",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/simpleanalytics/swift-package",
+      "state" : {
+        "revision" : "df261f54f9813f0272f2d88effcf51d872504ca6",
+        "version" : "0.4.1"
+      }
+    }
+  ],
+  "version" : 3
+}

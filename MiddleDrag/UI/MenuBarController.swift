@@ -173,6 +173,10 @@ class MenuBarController: NSObject {
         multitouchManager?.toggleEnabled()
         let isEnabled = multitouchManager?.isEnabled ?? false
         
+        // Track feature toggle
+        AnalyticsManager.shared.trackEvent(isEnabled ? .featureEnabled : .featureDisabled, 
+                                           parameters: ["feature": "gesture_recognition"])
+        
         if let item = statusItem.menu?.item(withTag: MenuItemTag.enabled.rawValue) {
             item.state = isEnabled ? .on : .off
         }
@@ -183,6 +187,9 @@ class MenuBarController: NSObject {
     
     @objc private func setSensitivity(_ sender: NSMenuItem) {
         guard let value = sender.representedObject as? Float else { return }
+        
+        // Track settings change
+        AnalyticsManager.shared.trackSettingsChange("sensitivity", value: String(value))
         
         // Update UI
         if let menu = sender.menu {
@@ -204,6 +211,10 @@ class MenuBarController: NSObject {
         multitouchManager?.configuration.requiresExactlyThreeFingers = preferences.requiresExactlyThreeFingers
         buildMenu()  // Rebuild to update checkmark
         
+        // Track settings change
+        AnalyticsManager.shared.trackSettingsChange("require_exactly_three_fingers", 
+                                                    value: String(preferences.requiresExactlyThreeFingers))
+        
         NotificationCenter.default.post(name: .preferencesChanged, object: preferences)
     }
     
@@ -216,6 +227,10 @@ class MenuBarController: NSObject {
         
         buildMenu()  // Rebuild to update checkmark
         
+        // Track settings change
+        AnalyticsManager.shared.trackSettingsChange("block_system_gestures", 
+                                                    value: String(preferences.blockSystemGestures))
+        
         if preferences.blockSystemGestures {
             showSystemGestureWarning()
         }
@@ -225,6 +240,10 @@ class MenuBarController: NSObject {
     
     @objc private func toggleLaunchAtLogin() {
         preferences.launchAtLogin.toggle()
+        
+        // Track settings change
+        AnalyticsManager.shared.trackSettingsChange("launch_at_login", 
+                                                    value: String(preferences.launchAtLogin))
         
         if let item = statusItem.menu?.item(withTag: MenuItemTag.launchAtLogin.rawValue) {
             item.state = preferences.launchAtLogin ? .on : .off
