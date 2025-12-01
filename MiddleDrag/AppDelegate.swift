@@ -15,6 +15,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Hide dock icon (menu bar app only)
         NSApp.setActivationPolicy(.accessory)
         
+        // Close any windows that SwiftUI might have created
+        closeAllWindows()
+        
         // Defer initialization to ensure app is fully ready
         DispatchQueue.main.async { [weak self] in
             self?.initializeApp()
@@ -22,6 +25,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     private func initializeApp() {
+        // Close any windows again (in case they appeared during init)
+        closeAllWindows()
+        
         // Load preferences
         preferences = PreferencesManager.shared.loadPreferences()
         
@@ -46,31 +52,47 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Check Accessibility permission AFTER UI is set up
         // This way the menu bar icon appears even if permission is missing
         if !AXIsProcessTrusted() {
-            // Show our custom alert only - don't use the system prompt
-            let alert = NSAlert()
-            alert.messageText = "Accessibility Permission Required"
-            alert.informativeText = """
-            MiddleDrag needs Accessibility permission to simulate mouse clicks.
-            
-            To grant permission:
-            1. Click "Open System Settings" below
-            2. Click the "+" button
-            3. Navigate to this app and add it
-            4. Make sure the checkbox is enabled
-            5. Restart MiddleDrag
-            
-            Note: You may need to remove and re-add the app if you downloaded a new version.
-            """
-            alert.alertStyle = .warning
-            alert.addButton(withTitle: "Open System Settings")
-            alert.addButton(withTitle: "Continue Anyway")
-            
-            if alert.runModal() == .alertFirstButtonReturn {
-                if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-                    NSWorkspace.shared.open(url)
-                }
+            showAccessibilityAlert()
+        }
+        
+        // Final cleanup of any stray windows
+        closeAllWindows()
+    }
+    
+    private func showAccessibilityAlert() {
+        let alert = NSAlert()
+        alert.messageText = "Accessibility Permission Required"
+        alert.informativeText = """
+        MiddleDrag needs Accessibility permission to simulate mouse clicks.
+        
+        To grant permission:
+        1. Click "Open System Settings" below
+        2. Click the "+" button
+        3. Navigate to this app and add it
+        4. Make sure the checkbox is enabled
+        5. Restart MiddleDrag
+        
+        Note: You may need to remove and re-add the app if you downloaded a new version.
+        """
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Open System Settings")
+        alert.addButton(withTitle: "Continue Anyway")
+        
+        if alert.runModal() == .alertFirstButtonReturn {
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+                NSWorkspace.shared.open(url)
             }
-            // Don't quit - let user continue and see the menu bar icon
+        }
+    }
+    
+    /// Close all windows - menu bar apps shouldn't have any visible windows
+    private func closeAllWindows() {
+        for window in NSApp.windows {
+            // Don't close status bar or menu-related windows
+            let className = window.className
+            if !className.contains("NSStatusBar") && !className.contains("NSMenu") {
+                window.close()
+            }
         }
     }
     
