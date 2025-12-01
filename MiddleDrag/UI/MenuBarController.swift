@@ -156,6 +156,15 @@ class MenuBarController: NSObject {
             action: #selector(toggleSystemGestureBlocking)
         ))
         
+        submenu.addItem(NSMenuItem.separator())
+        
+        // Analytics opt-out
+        submenu.addItem(createAdvancedMenuItem(
+            title: "Send Anonymous Usage Data",
+            isOn: AnalyticsManager.shared.isEnabled,
+            action: #selector(toggleAnalytics)
+        ))
+        
         item.submenu = submenu
         return item
     }
@@ -251,6 +260,11 @@ class MenuBarController: NSObject {
         
         NotificationCenter.default.post(name: .launchAtLoginChanged, object: preferences.launchAtLogin)
         NotificationCenter.default.post(name: .preferencesChanged, object: preferences)
+    }
+    
+    @objc private func toggleAnalytics() {
+        AnalyticsManager.shared.isEnabled.toggle()
+        buildMenu()  // Rebuild to update checkmark
     }
     
     @objc private func showAbout() {
