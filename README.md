@@ -23,10 +23,32 @@ A macOS menu bar app that enables middle-click and middle-drag functionality usi
 
 ## Installation
 
-1. Download the latest release from the Releases page
-2. Move `MiddleDrag.app` to your Applications folder
+### Homebrew (Recommended)
+
+```bash
+brew tap nullpointerdepressivedisorder/tap
+brew install --cask middledrag
+```
+
+### Manual Installation
+
+1. Download the latest release from the [Releases page](https://github.com/NullPointerDepressiveDisorder/MiddleDrag/releases)
+2. Extract and move `MiddleDrag.app` to your Applications folder
 3. Launch the app
 4. Grant Accessibility permissions when prompted (System Settings → Privacy & Security → Accessibility)
+
+### Gatekeeper Notice
+
+Since MiddleDrag is not notarized with Apple, macOS will show a warning on first launch. To open:
+
+**Option 1:** Right-click the app → Open → click "Open" in the dialog
+
+**Option 2:** Run in terminal:
+```bash
+xattr -cr /Applications/MiddleDrag.app
+```
+
+This is standard for open source macOS apps that aren't distributed through the Mac App Store.
 
 ## Usage
 
