@@ -1,7 +1,7 @@
 # .github/workflows/update-homebrew.yml
 name: Update Homebrew Tap
 permissions:
-  contents: write
+  contents: read
 
 on:
   release:
