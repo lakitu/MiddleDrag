@@ -70,9 +70,9 @@ MiddleDrag/
 │   │   ├── MenuBarController.swift  # NSStatusItem menu bar
 │   │   └── AlertHelper.swift        # NSAlert dialogs
 │   └── Utilities/                   # Helpers
-│       ├── PreferencesManager.swift # UserDefaults persistence
+│       ├── PreferencesManager.swift   # UserDefaults persistence
 │       ├── LaunchAtLoginManager.swift # Login item management
-│       └── AnalyticsManager.swift   # Usage analytics
+│       └── AnalyticsManager.swift     # Sentry + SimpleAnalytics
 ├── MiddleDrag.xcodeproj/            # Xcode project
 ├── build.sh                         # Primary build script
 ├── run-debug.sh                     # Run debug build from DerivedData
