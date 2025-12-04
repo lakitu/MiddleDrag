@@ -1,6 +1,95 @@
 import Foundation
 import Cocoa
 import Sentry
+import os.log
+
+// MARK: - Sentry Logger
+/// A unified logger that writes to both os_log and Sentry breadcrumbs
+/// Usage: Log.debug("message"), Log.info("message"), Log.warning("message"), Log.error("message")
+enum Log {
+    private static let subsystem = Bundle.main.bundleIdentifier ?? "com.middledrag"
+    
+    // OS Log categories
+    private static let gestureLog = OSLog(subsystem: subsystem, category: "gesture")
+    private static let deviceLog = OSLog(subsystem: subsystem, category: "device")
+    private static let analyticsLog = OSLog(subsystem: subsystem, category: "analytics")
+    private static let appLog = OSLog(subsystem: subsystem, category: "app")
+    
+    enum Category: String {
+        case gesture
+        case device
+        case analytics
+        case app
+        
+        var osLog: OSLog {
+            switch self {
+            case .gesture: return Log.gestureLog
+            case .device: return Log.deviceLog
+            case .analytics: return Log.analyticsLog
+            case .app: return Log.appLog
+            }
+        }
+    }
+    
+    /// Debug level - only in debug builds, not sent to Sentry
+    static func debug(_ message: String, category: Category = .app) {
+        #if DEBUG
+        os_log(.debug, log: category.osLog, "%{public}@", message)
+        #endif
+    }
+    
+    /// Info level - logged locally and as Sentry breadcrumb
+    static func info(_ message: String, category: Category = .app) {
+        os_log(.info, log: category.osLog, "%{public}@", message)
+        addBreadcrumb(message: message, category: category, level: .info)
+    }
+    
+    /// Warning level - logged locally and as Sentry breadcrumb
+    static func warning(_ message: String, category: Category = .app) {
+        os_log(.error, log: category.osLog, "⚠️ %{public}@", message)
+        addBreadcrumb(message: message, category: category, level: .warning)
+    }
+    
+    /// Error level - logged locally, sent as Sentry breadcrumb AND captured as event
+    static func error(_ message: String, category: Category = .app, error: Error? = nil) {
+        os_log(.fault, log: category.osLog, "❌ %{public}@", message)
+        addBreadcrumb(message: message, category: category, level: .error)
+        
+        // Also capture as Sentry event for errors
+        if let error = error {
+            SentrySDK.capture(error: error) { scope in
+                scope.setContext(value: ["message": message], key: "log_context")
+            }
+        } else {
+            SentrySDK.capture(message: message) { scope in
+                scope.setLevel(.error)
+                scope.setTag(value: category.rawValue, key: "log_category")
+            }
+        }
+    }
+    
+    /// Fatal level - for unrecoverable errors, always captured
+    static func fatal(_ message: String, category: Category = .app, error: Error? = nil) {
+        os_log(.fault, log: category.osLog, "💀 FATAL: %{public}@", message)
+        
+        SentrySDK.capture(message: "FATAL: \(message)") { scope in
+            scope.setLevel(.fatal)
+            scope.setTag(value: category.rawValue, key: "log_category")
+            if let error = error {
+                scope.setContext(value: ["error": error.localizedDescription], key: "error_info")
+            }
+        }
+    }
+    
+    private static func addBreadcrumb(message: String, category: Category, level: SentryLevel) {
+        let breadcrumb = Breadcrumb()
+        breadcrumb.category = category.rawValue
+        breadcrumb.message = message
+        breadcrumb.level = level
+        breadcrumb.timestamp = Date()
+        SentrySDK.addBreadcrumb(breadcrumb)
+    }
+}
 
 // MARK: - Analytics Manager
 /// Centralized analytics for MiddleDrag using Sentry (crash reporting) and Simple Analytics (usage)
@@ -55,7 +144,7 @@ final class AnalyticsManager {
         trackEvent(.appLaunched)
         
         #if DEBUG
-        print("[Analytics] Initialized (Sentry + Simple Analytics)")
+        Log.debug("Initialized (Sentry + Simple Analytics)", category: .analytics)
         #endif
     }
     
@@ -69,7 +158,7 @@ final class AnalyticsManager {
         // Skip if DSN not configured
         guard isSentryConfigured else {
             #if DEBUG
-            print("[Analytics] Sentry DSN not configured - skipping initialization")
+            Log.debug("Sentry DSN not configured - skipping initialization", category: .analytics)
             #endif
             return
         }
@@ -146,7 +235,7 @@ final class AnalyticsManager {
         URLSession.shared.dataTask(with: request) { _, _, error in
             #if DEBUG
             if let error = error {
-                print("[Analytics] Simple Analytics error: \(error.localizedDescription)")
+                Log.warning("Simple Analytics error: \(error.localizedDescription)", category: .analytics)
             }
             #endif
         }.resume()
@@ -172,7 +261,7 @@ final class AnalyticsManager {
         sendSimpleAnalyticsEvent(path: event.category, event: event.rawValue)
         
         #if DEBUG
-        print("[Analytics] Event: \(event.rawValue) \(parameters)")
+        Log.debug("Event: \(event.rawValue) \(parameters)", category: .analytics)
         #endif
     }
     
@@ -199,7 +288,7 @@ final class AnalyticsManager {
         }
         
         #if DEBUG
-        print("[Analytics] Error: \(error.localizedDescription)")
+        Log.debug("Error tracked: \(error.localizedDescription)", category: .analytics)
         #endif
     }
     
