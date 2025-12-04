@@ -1,29 +1,10 @@
 import Foundation
 import CoreFoundation
 
-// MARK: - Debug Logging (Debug builds only)
+// MARK: - Debug Touch Counter (Debug builds only)
 
 #if DEBUG
-private let debugLogPath = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("middledrag_touch.log")
 private var touchCount = 0
-
-private func logToFile(_ message: String) {
-    let timestamp = ISO8601DateFormatter().string(from: Date())
-    let line = "[\(timestamp)] \(message)\n"
-    if let data = line.data(using: .utf8) {
-        if FileManager.default.fileExists(atPath: debugLogPath.path) {
-            if let handle = try? FileHandle(forWritingTo: debugLogPath) {
-                handle.seekToEndOfFile()
-                handle.write(data)
-                handle.closeFile()
-            }
-        } else {
-            try? data.write(to: debugLogPath)
-        }
-    }
-}
-#else
-@inline(__always) private func logToFile(_ message: String) {}
 #endif
 
 // MARK: - Global Callback Storage
@@ -36,8 +17,9 @@ private var gDeviceMonitor: DeviceMonitor?
 private let deviceContactCallback: MTContactCallbackFunction = { device, touches, numTouches, timestamp, frame in
     #if DEBUG
     touchCount += 1
-    if touchCount <= 5 || touchCount % 100 == 0 {
-        logToFile("Touch callback #\(touchCount): \(numTouches) touches")
+    // Log sparingly to avoid performance impact
+    if touchCount <= 5 || touchCount % 500 == 0 {
+        Log.debug("Touch callback #\(touchCount): \(numTouches) touches", category: .device)
     }
     #endif
     
@@ -85,20 +67,22 @@ class DeviceMonitor {
     func start() {
         guard !isRunning else { return }
         
-        logToFile("DeviceMonitor.start() called")
+        Log.info("DeviceMonitor starting...", category: .device)
+        
+        var deviceCount = 0
         
         // Try to get all devices
         if let deviceList = MTDeviceCreateList() {
             let count = CFArrayGetCount(deviceList)
-            logToFile("Found \(count) multitouch device(s)")
+            Log.info("Found \(count) multitouch device(s)", category: .device)
             
             for i in 0..<count {
                 let devicePtr = CFArrayGetValueAtIndex(deviceList, i)
                 if let dev = devicePtr {
                     let deviceRef = UnsafeMutableRawPointer(mutating: dev)
-                    logToFile("Registering callback for device \(i): \(deviceRef)")
                     MTRegisterContactFrameCallback(deviceRef, deviceContactCallback)
                     MTDeviceStart(deviceRef, 0)
+                    deviceCount += 1
                     
                     if device == nil {
                         device = deviceRef
@@ -106,23 +90,27 @@ class DeviceMonitor {
                 }
             }
         } else {
-            logToFile("MTDeviceCreateList returned nil, trying default")
+            Log.warning("MTDeviceCreateList returned nil, trying default device", category: .device)
         }
         
         // Also try the default device
         if let defaultDevice = MultitouchFramework.shared.getDefaultDevice() {
-            logToFile("Also registering default device: \(defaultDevice)")
             MTRegisterContactFrameCallback(defaultDevice, deviceContactCallback)
             MTDeviceStart(defaultDevice, 0)
+            deviceCount += 1
             
             if device == nil {
                 device = defaultDevice
             }
         }
         
-        logToFile("Device registration complete")
+        if device == nil {
+            Log.error("No multitouch device found!", category: .device)
+        } else {
+            Log.info("DeviceMonitor started with \(deviceCount) device(s)", category: .device)
+        }
+        
         isRunning = true
-        logToFile("DeviceMonitor started successfully")
     }
     
     /// Stop monitoring
@@ -134,6 +122,8 @@ class DeviceMonitor {
         
         self.device = nil
         isRunning = false
+        
+        Log.info("DeviceMonitor stopped", category: .device)
     }
     
     // MARK: - Internal
