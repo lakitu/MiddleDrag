@@ -12,8 +12,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Application Lifecycle
     
     func applicationDidFinishLaunching(_ notification: Notification) {
-        //Initialize Analytics
+        // Initialize Analytics first (sets up Sentry for crash reporting)
         AnalyticsManager.shared.initialize()
+        
+        Log.info("MiddleDrag starting...", category: .app)
         
         // Hide dock icon (menu bar app only)
         NSApp.setActivationPolicy(.accessory)
@@ -33,16 +35,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // Load preferences
         preferences = PreferencesManager.shared.loadPreferences()
+        Log.info("Preferences loaded", category: .app)
         
         // Configure and start multitouch manager
         multitouchManager.updateConfiguration(preferences.gestureConfig)
         multitouchManager.start()
+        Log.info("Multitouch manager started", category: .app)
         
         // Set up menu bar UI
         menuBarController = MenuBarController(
             multitouchManager: multitouchManager,
             preferences: preferences
         )
+        Log.info("Menu bar controller initialized", category: .app)
         
         // Set up notification observers
         setupNotifications()
@@ -55,14 +60,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Check Accessibility permission AFTER UI is set up
         // This way the menu bar icon appears even if permission is missing
         if !AXIsProcessTrusted() {
+            Log.warning("Accessibility permission not granted", category: .app)
             AnalyticsManager.shared.trackAccessibilityPermission(granted: false)
             showAccessibilityAlert()
         } else {
+            Log.info("Accessibility permission granted", category: .app)
             AnalyticsManager.shared.trackAccessibilityPermission(granted: true)
         }
         
         // Final cleanup of any stray windows
         closeAllWindows()
+        
+        Log.info("MiddleDrag initialization complete", category: .app)
     }
     
     private func showAccessibilityAlert() {
@@ -103,7 +112,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func applicationWillTerminate(_ notification: Notification) {
-        //Track app termination
+        Log.info("MiddleDrag terminating", category: .app)
+        
+        // Track app termination
         AnalyticsManager.shared.trackTermination()
         
         multitouchManager.stop()
@@ -142,6 +153,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             preferences = newPreferences
             PreferencesManager.shared.savePreferences(preferences)
             multitouchManager.updateConfiguration(preferences.gestureConfig)
+            Log.info("Preferences updated", category: .app)
         }
     }
     
