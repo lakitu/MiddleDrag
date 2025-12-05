@@ -121,15 +121,31 @@ jobs:
           zip -r MiddleDrag-${{ steps.version.outputs.VERSION }}.zip MiddleDrag.app
           mv MiddleDrag-${{ steps.version.outputs.VERSION }}.zip $GITHUB_WORKSPACE/
 
-      - name: Create Sentry release
-        uses: getsentry/action-release@v3
+      - name: Install Sentry CLI
+        run: |
+          curl -sL https://sentry.io/get-cli/ | bash
+
+      - name: Upload dSYM to Sentry
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
-        with:
-          environment: production
-          release: "v${{ steps.version.outputs.VERSION }}"
+        run: |
+          sentry-cli debug-files upload \
+            --include-sources \
+            build/Build/Products/Release/
+
+      - name: Create Sentry release
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        run: |
+          VERSION="v${{ steps.version.outputs.VERSION }}"
+          sentry-cli releases new "$VERSION"
+          sentry-cli releases set-commits "$VERSION" --auto
+          sentry-cli releases finalize "$VERSION"
+          sentry-cli releases deploys "$VERSION" new -e production
       
       - name: Generate SHA256
         id: sha
