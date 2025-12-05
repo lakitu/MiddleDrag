@@ -62,8 +62,8 @@ jobs:
             ./bump-version.sh "$VERSION"
 
             # Push the commit and the tag
-            git push origin $BRANCH_NAME
-            git push origin v$VERSION
+            git push origin "$BRANCH_NAME"
+            git push origin "v$VERSION"
           else
             echo "Version matches. Proceeding..."
           fi
