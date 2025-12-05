@@ -39,7 +39,7 @@ jobs:
 
       - name: Bump Version
         env:
-          BUMP_TOKEN: ${{ BUMP_TOKEN }}
+          BUMP_TOKEN: ${{ secrets.BUMP_TOKEN }}
         if: github.event_name == 'workflow_dispatch' && inputs.version != ''
         run: |
           VERSION="${{ inputs.version }}"
