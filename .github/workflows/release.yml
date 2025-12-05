@@ -38,6 +38,8 @@ jobs:
           swift --version
 
       - name: Bump Version
+        env:
+          BUMP_TOKEN: ${{ BUMP_TOKEN }}
         if: github.event_name == 'workflow_dispatch' && inputs.version != ''
         run: |
           VERSION="${{ inputs.version }}"
@@ -57,6 +59,8 @@ jobs:
 
             BRANCH_NAME=${GITHUB_REF#refs/heads/}
             git checkout "$BRANCH_NAME"
+
+            git remote set-url origin "https://x-access-token:${BUMP_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
 
             # Run the bump script
             ./bump-version.sh "$VERSION"
