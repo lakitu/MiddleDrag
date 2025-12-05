@@ -64,9 +64,13 @@ jobs:
             BRANCH_NAME=${GITHUB_REF#refs/heads/}
             git fetch origin "$BRANCH_NAME"
             git checkout "$BRANCH_NAME"
-            git pull --rebase origin "$BRANCH_NAME"
+            git reset --hard "origin/$BRANCH_NAME"
 
             ./bump-version.sh "$VERSION"
+
+            # Rebase on latest main in case of new commits
+            git fetch origin "$BRANCH_NAME"
+            git rebase "origin/$BRANCH_NAME"
 
             git push origin "$BRANCH_NAME"
             git push origin "v$VERSION"
