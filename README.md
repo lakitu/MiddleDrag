@@ -1,29 +1,54 @@
 # MiddleDrag
 
-A macOS menu bar app that enables middle-click and middle-drag functionality using three-finger trackpad gestures.
+**Three-finger trackpad gestures for middle-click and middle-drag on macOS.**
 
-![macOS](https://img.shields.io/badge/macOS-14.0+-blue)
-![Swift](https://img.shields.io/badge/Swift-5.9+-orange)
-![License](https://img.shields.io/badge/License-MIT-green)
+Finally use your MacBook for CAD work without carrying a mouse.
+
+[![macOS 15+](https://img.shields.io/badge/macOS-15.0+-blue?logo=apple)](https://www.apple.com/macos/)
+[![Swift 5.9+](https://img.shields.io/badge/Swift-5.9+-orange?logo=swift)](https://swift.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Homebrew](https://img.shields.io/badge/Homebrew-tap-brown?logo=homebrew)](https://github.com/NullPointerDepressiveDisorder/homebrew-tap)
+[![GitHub release](https://img.shields.io/github/v/release/NullPointerDepressiveDisorder/MiddleDrag)](https://github.com/NullPointerDepressiveDisorder/MiddleDrag/releases)
 
 <p align="center">
-  <img src="assets/demo.gif" width="600" alt="MiddleDrag demo showing three-finger trackpad navigation">
+  <img src="assets/demo.gif" width="600" alt="MiddleDrag demo showing three-finger trackpad navigation in CAD software">
 </p>
+
+## The Problem
+
+Professional 3D software expects middle-mouse-button navigation. MacBook trackpads don't have one.
+
+For years, CAD users on Mac have been forced to either carry an external mouse, use awkward four-key modifier combinations, or fight with unreliable workarounds. Forum threads dating back to 2017 are filled with users pleading for a solution.
+
+**MiddleDrag fixes this.** Three-finger tap for middle-click. Three-finger drag for middle-drag. Works alongside Mission Control and other system gestures.
+
+## Who This Is For
+
+MiddleDrag is essential for users of applications with **broken or missing trackpad navigation**:
+
+| Application | Native Trackpad Support | MiddleDrag Value |
+|-------------|------------------------|------------------|
+| **FreeCAD** | ❌ Broken gestures | Essential — native gestures misfire constantly |
+| **OnShape** | ❌ Force-click only | Essential — no tap gestures, causes hand strain |
+| **ZBrush** | ❌ None | Essential — zero multi-touch recognition |
+| **SketchUp Pro** | ❌ 4-key combos | Essential — Ctrl+Cmd+Shift+drag is unusable |
+| **SolidWorks** | ❌ N/A (Windows VM) | Essential — only zoom works through Parallels |
+| **Cinema 4D** | ⚠️ Alt-key required | High — every action needs a modifier key |
+| **Fusion 360** | ⚠️ Buggy | High — breaks after updates and sleep cycles |
+| **Maya** | ⚠️ Erratic | High — viewport spins without input |
+| **Rhino** | ✅ Good | Moderate — sleep-wake bug breaks gestures |
+| **Blender** | ✅ Good | Optional — native support works, but Alt-key conflicts exist |
+
+Also useful for **browsers** (middle-click to open links in new tabs, close tabs) and **any application** expecting middle-mouse input.
 
 ## Features
 
 - **Three-finger tap** → Middle mouse click
-- **Three-finger drag** → Middle mouse drag (for panning in apps like Blender, CAD software, browsers, etc.)
-- Works alongside system trackpad gestures without interference
-- Configurable sensitivity and smoothing
-- Menu bar icon with quick access to settings
-- Launch at login support
-
-## Requirements
-
-- macOS 15.0 (Seqoia) or later
-- Built-in trackpad or Magic Trackpad
-- Accessibility permissions (required for mouse event generation)
+- **Three-finger drag** → Middle mouse drag (pan/orbit in 3D apps)
+- **Works with system gestures** — Mission Control, Exposé, and other macOS gestures remain functional
+- **Native macOS app** — Menu bar interface, no terminal configuration required
+- **Configurable** — Adjust sensitivity and smoothing to your preference
+- **Launch at login** — Set it and forget it
 
 ## Installation
 
@@ -34,78 +59,78 @@ brew tap nullpointerdepressivedisorder/tap
 brew install --cask middledrag
 ```
 
-### Manual Installation
+### Manual Download
 
-1. Download the latest release from the [Releases page](https://github.com/NullPointerDepressiveDisorder/MiddleDrag/releases)
-2. Extract and move `MiddleDrag.app` to your Applications folder
-3. Launch the app
-4. Grant Accessibility permissions when prompted (System Settings → Privacy & Security → Accessibility)
+1. Download from [Releases](https://github.com/NullPointerDepressiveDisorder/MiddleDrag/releases)
+2. Move `MiddleDrag.app` to Applications
+3. Launch and grant Accessibility permissions when prompted
 
 ### Gatekeeper Notice
 
-Since MiddleDrag is not notarized with Apple, macOS will show a warning on first launch. To open:
+MiddleDrag isn't notarized with Apple (standard for open source apps). On first launch:
 
-**Option 1:** Right-click the app → Open → click "Open" in the dialog
+**Right-click → Open → Click "Open"** in the dialog
 
-**Option 2:** Run in terminal:
-```bash
-xattr -cr /Applications/MiddleDrag.app
-```
-
-This is standard for open source macOS apps that aren't distributed through the Mac App Store.
+Or run: `xattr -cr /Applications/MiddleDrag.app`
 
 ## Usage
 
-Once running, MiddleDrag appears as a hand icon in your menu bar:
+MiddleDrag runs in your menu bar as a hand icon.
 
-- **Three-finger tap**: Performs a middle mouse click (useful for opening links in new tabs, closing tabs, etc.)
-- **Three-finger drag**: Performs a middle mouse drag (useful for panning/orbiting in 3D applications)
+| Gesture | Action |
+|---------|--------|
+| Three-finger tap | Middle click |
+| Three-finger drag | Middle drag (pan/orbit) |
 
-### Menu Bar Options
+### Settings
 
-- **Enabled**: Toggle gesture recognition on/off
-- **Drag Sensitivity**: Adjust how fast the cursor moves during drag (0.5x - 2x)
-- **Advanced**:
-  - Require Exactly 3 Fingers: Only recognize gestures with exactly 3 fingers
-  - Block System Gestures: Attempt to prevent system gesture interference
-- **Launch at Login**: Start MiddleDrag automatically when you log in
+- **Enabled** — Toggle gesture recognition
+- **Drag Sensitivity** — Cursor speed during drag (0.5x – 2x)
+- **Require Exactly 3 Fingers** — Ignore 4+ finger touches
+- **Launch at Login** — Auto-start with macOS
+
+## Why MiddleDrag?
+
+### vs. BetterTouchTool ($10-24)
+
+BetterTouchTool is powerful but overwhelming. Hundreds of options, complex interface, middle-click buried among features you'll never use. MiddleDrag does one thing well.
+
+### vs. Middle ($8)
+
+Middle costs $8 for functionality that should be free. It's also closed-source. MiddleDrag is MIT-licensed and community-maintained.
+
+### vs. MiddleClick (open source)
+
+MiddleClick requires terminal commands for all configuration — no GUI. MiddleDrag provides a native macOS settings interface. Both are open source, but MiddleDrag is actively maintained for modern macOS versions.
+
+## Requirements
+
+- macOS 15.0 (Sequoia) or later
+- Built-in trackpad or Magic Trackpad
+- Accessibility permissions
 
 ## How It Works
 
-MiddleDrag uses Apple's private MultitouchSupport framework to receive raw touch data from the trackpad before it's processed by the system gesture recognizer. This allows it to:
+MiddleDrag uses Apple's private MultitouchSupport framework to intercept raw touch data *before* the system gesture recognizer processes it. This allows three-finger gestures to generate middle-mouse events while leaving Mission Control and other system gestures intact.
 
-1. Detect three-finger gestures independently
-2. Generate synthetic middle mouse events via the Accessibility API
-3. Suppress conflicting system-generated click events using a CGEventTap
+Technical flow:
+1. MultitouchSupport framework provides raw touch coordinates
+2. GestureRecognizer detects three-finger tap/drag patterns
+3. Accessibility API generates synthetic middle-mouse events
+4. CGEventTap suppresses conflicting system click events
 
 ## Building from Source
 
-### Prerequisites
-
-- Xcode 16.0 or later
-- macOS 15.0 SDK or later
-
-### Build
-
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/MiddleDrag.git
+git clone https://github.com/NullPointerDepressiveDisorder/MiddleDrag.git
 cd MiddleDrag
-
-# Build release version
 ./build.sh
-
-# Or build and run debug version
-./build.sh --debug --run
 ```
 
-### Xcode
+Or open `MiddleDrag.xcodeproj` in Xcode 16+.
 
-1. Open `MiddleDrag.xcodeproj`
-2. Select your signing team in project settings
-3. Build and run (⌘R)
-
-## Project Structure
+<details>
+<summary>Project Structure</summary>
 
 ```
 MiddleDrag/
@@ -127,55 +152,56 @@ MiddleDrag/
     └── PreferencesManager.swift   # Settings persistence
 ```
 
+</details>
+
 ## Compatibility
 
 | macOS Version | Status |
-|--------------|--------|
-| macOS 15 (Sequoia) | ✅ Fully supported |
+|---------------|--------|
+| macOS 15 (Sequoia) | ✅ Supported |
 | macOS 26 beta (Tahoe) | ✅ Compatible |
 
-Works with both built-in MacBook trackpads and external Magic Trackpads.
-
-## Known Limitations
-
-- Requires Accessibility permissions to generate mouse events
-- Physical trackpad clicks (pressing down) with 3 fingers may still trigger system gestures - soft taps work best
-- Some applications may not respond to synthetic middle mouse events
+Works with built-in MacBook trackpads and external Magic Trackpads.
 
 ## Troubleshooting
 
-### App doesn't respond to gestures
-1. Check that Accessibility permissions are granted in System Settings
-2. Try toggling the "Enabled" option in the menu bar
+<details>
+<summary>Gestures not working</summary>
+
+1. Check Accessibility permissions: **System Settings → Privacy & Security → Accessibility**
+2. Toggle "Enabled" in the menu bar
 3. Restart the app
 
-### Gestures conflict with system gestures
-1. Use soft taps instead of physical clicks
-2. Adjust your trackpad settings in System Settings if needed
+</details>
 
-### Menu bar icon shows disabled (slash through hand)
-1. Check Accessibility permissions
-2. Toggle "Enabled" in the menu
+<details>
+<summary>After updating, gestures stopped</summary>
 
-### After updating, gestures stopped working
-When you update MiddleDrag to a new version, macOS may require you to re-grant Accessibility permissions:
+macOS treats each app version as a new application. Re-grant permissions:
 
-1. Open **System Settings → Privacy & Security → Accessibility**
-2. Find MiddleDrag in the list
-3. Toggle it **off**, then **on** again
-4. Restart MiddleDrag
+1. **System Settings → Privacy & Security → Accessibility**
+2. Toggle MiddleDrag **off** then **on**
+3. Restart MiddleDrag
 
-This is a macOS security requirement - each new app version is treated as a different application.
+</details>
+
+<details>
+<summary>Conflicts with system gestures</summary>
+
+Use soft taps instead of physical clicks. The app is designed to coexist with system gestures, but pressing down hard may still trigger Mission Control.
+
+</details>
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+[MIT License](LICENSE)
 
-## Acknowledgments
+---
 
-- Inspired by the need for middle-click functionality on macOS trackpads
-- Uses the MultitouchSupport private framework for raw touch access
+<p align="center">
+  <i>Built for the CAD users who've been asking for this since 2017.</i>
+</p>
