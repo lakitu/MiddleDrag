@@ -12,7 +12,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Application Lifecycle
     
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Initialize Analytics first (sets up Sentry for crash reporting)
+        // Initialize Sentry for crash reporting (no usage analytics)
         AnalyticsManager.shared.initialize()
         
         Log.info("MiddleDrag starting...", category: .app)
@@ -46,14 +46,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         if hasAccessibilityPermission {
             Log.info("Accessibility permission granted", category: .app)
-            AnalyticsManager.shared.trackAccessibilityPermission(granted: true)
             
             // Start multitouch manager (only if we have permission)
             multitouchManager.start()
             Log.info("Multitouch manager started", category: .app)
         } else {
             Log.warning("Accessibility permission not granted", category: .app)
-            AnalyticsManager.shared.trackAccessibilityPermission(granted: false)
         }
         
         // Set up menu bar UI (always initialize, even without permission)
@@ -122,9 +120,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     func applicationWillTerminate(_ notification: Notification) {
         Log.info("MiddleDrag terminating", category: .app)
-        
-        // Track app termination
-        AnalyticsManager.shared.trackTermination()
         
         multitouchManager.stop()
         
