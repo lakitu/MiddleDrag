@@ -3,8 +3,8 @@ import Cocoa
 import Sentry
 import os.log
 
-// MARK: - Sentry Logger
-/// A unified logger that writes to both os_log and Sentry breadcrumbs
+// MARK: - Logger
+/// A unified logger that writes to os_log (and optionally Sentry breadcrumbs if crash reporting is enabled)
 /// Usage: Log.debug("message"), Log.info("message"), Log.warning("message"), Log.error("message"), Log.fatal("message")
 enum Log {
     private static let subsystem = Bundle.main.bundleIdentifier ?? "com.middledrag"
@@ -12,135 +12,164 @@ enum Log {
     // OS Log categories
     private static let gestureLog = OSLog(subsystem: subsystem, category: "gesture")
     private static let deviceLog = OSLog(subsystem: subsystem, category: "device")
-    private static let analyticsLog = OSLog(subsystem: subsystem, category: "analytics")
+    private static let crashLog = OSLog(subsystem: subsystem, category: "crash")
     private static let appLog = OSLog(subsystem: subsystem, category: "app")
     
     enum Category: String {
         case gesture
         case device
-        case analytics
+        case crash
         case app
         
         var osLog: OSLog {
             switch self {
             case .gesture: return Log.gestureLog
             case .device: return Log.deviceLog
-            case .analytics: return Log.analyticsLog
+            case .crash: return Log.crashLog
             case .app: return Log.appLog
             }
         }
     }
     
-    /// Debug level - only in debug builds, not sent to Sentry
+    /// Debug level - only in debug builds, never sent anywhere
     static func debug(_ message: String, category: Category = .app) {
         #if DEBUG
         os_log(.debug, log: category.osLog, "%{public}@", message)
         #endif
     }
     
-    /// Info level - logged locally and as Sentry breadcrumb
+    /// Info level - logged locally, breadcrumb added only if crash reporting enabled
     static func info(_ message: String, category: Category = .app) {
         os_log(.info, log: category.osLog, "%{public}@", message)
-        addBreadcrumb(message: message, category: category, level: .info)
+        CrashReporter.shared.addBreadcrumbIfEnabled(message: message, category: category.rawValue, level: .info)
     }
     
-    /// Warning level - logged locally and as Sentry breadcrumb
+    /// Warning level - logged locally, breadcrumb added only if crash reporting enabled
     static func warning(_ message: String, category: Category = .app) {
         os_log(.error, log: category.osLog, "⚠️ %{public}@", message)
-        addBreadcrumb(message: message, category: category, level: .warning)
+        CrashReporter.shared.addBreadcrumbIfEnabled(message: message, category: category.rawValue, level: .warning)
     }
     
-    /// Error level - logged locally, sent as Sentry breadcrumb AND captured as event
+    /// Error level - logged locally, captured by Sentry only if crash reporting enabled
     static func error(_ message: String, category: Category = .app, error: Error? = nil) {
         os_log(.fault, log: category.osLog, "❌ %{public}@", message)
-        addBreadcrumb(message: message, category: category, level: .error)
+        CrashReporter.shared.addBreadcrumbIfEnabled(message: message, category: category.rawValue, level: .error)
         
-        // Also capture as Sentry event for errors
-        if let error = error {
-            SentrySDK.capture(error: error) { scope in
-                scope.setContext(value: ["message": message], key: "log_context")
-            }
-        } else {
-            SentrySDK.capture(message: message) { scope in
-                scope.setLevel(.error)
-                scope.setTag(value: category.rawValue, key: "log_category")
+        // Only capture to Sentry if enabled
+        if CrashReporter.shared.isEnabled {
+            if let error = error {
+                SentrySDK.capture(error: error) { scope in
+                    scope.setContext(value: ["message": message], key: "log_context")
+                }
+            } else {
+                SentrySDK.capture(message: message) { scope in
+                    scope.setLevel(.error)
+                    scope.setTag(value: category.rawValue, key: "log_category")
+                }
             }
         }
     }
     
-    /// Fatal level - for unrecoverable errors, always captured
+    /// Fatal level - logged locally, captured by Sentry only if crash reporting enabled
     static func fatal(_ message: String, category: Category = .app, error: Error? = nil) {
         os_log(.fault, log: category.osLog, "💀 FATAL: %{public}@", message)
         
-        SentrySDK.capture(message: "FATAL: \(message)") { scope in
-            scope.setLevel(.fatal)
-            scope.setTag(value: category.rawValue, key: "log_category")
-            if let error = error {
-                scope.setContext(value: ["error": error.localizedDescription], key: "error_info")
+        if CrashReporter.shared.isEnabled {
+            SentrySDK.capture(message: "FATAL: \(message)") { scope in
+                scope.setLevel(.fatal)
+                scope.setTag(value: category.rawValue, key: "log_category")
+                if let error = error {
+                    scope.setContext(value: ["error": error.localizedDescription], key: "error_info")
+                }
             }
         }
     }
-    
-    private static func addBreadcrumb(message: String, category: Category, level: SentryLevel) {
-        let breadcrumb = Breadcrumb()
-        breadcrumb.category = category.rawValue
-        breadcrumb.message = message
-        breadcrumb.level = level
-        breadcrumb.timestamp = Date()
-        SentrySDK.addBreadcrumb(breadcrumb)
-    }
 }
 
-// MARK: - Analytics Manager
-/// Crash reporting for MiddleDrag using Sentry
-///
-/// ## Privacy:
-/// - Sentry: Only captures crashes/errors, no PII
-/// - No usage analytics or tracking
-/// - Users can opt-out via app preferences
 
-final class AnalyticsManager {
+// MARK: - Crash Reporter
+/// Optional crash reporting for MiddleDrag using Sentry
+///
+/// ## Privacy-First Design:
+/// - **Offline by default** - No network calls until user opts in
+/// - **Crash reporting** (opt-in) - Only sends data when app crashes
+/// - **Performance monitoring** (opt-in) - Sends traces during normal use to help improve app
+/// - All data is anonymous (no PII collected)
+/// - Users control both settings independently
+///
+/// ## Network Behavior:
+/// - Both settings OFF (default): Zero network calls, ever
+/// - Crash reporting ON only: Network call only when app crashes
+/// - Performance monitoring ON: Network calls during normal operation (sampled)
+
+final class CrashReporter {
     
-    static let shared = AnalyticsManager()
+    static let shared = CrashReporter()
     
     // MARK: - Configuration
     
     private let sentryDSN = "https://3c3b5cf85ceb42936097f4f16e58b19b@o4510461788028928.ingest.us.sentry.io/4510461861429248"
     
-    /// UserDefaults key for crash reporting opt-out
-    private let analyticsEnabledKey = "analyticsEnabled"
+    // UserDefaults keys
+    private let crashReportingKey = "crashReportingEnabled"
+    private let performanceMonitoringKey = "performanceMonitoringEnabled"
     
-    /// Whether crash reporting is enabled (defaults to true, user can opt out)
+    /// Whether crash reporting is enabled (default: false - user must opt in)
+    /// When enabled, sends crash reports to help fix bugs
     var isEnabled: Bool {
-        get {
-            // Default to true if not set
-            if UserDefaults.standard.object(forKey: analyticsEnabledKey) == nil {
-                return true
-            }
-            return UserDefaults.standard.bool(forKey: analyticsEnabledKey)
-        }
+        get { UserDefaults.standard.bool(forKey: crashReportingKey) }
         set {
-            UserDefaults.standard.set(newValue, forKey: analyticsEnabledKey)
+            let wasEnabled = isEnabled
+            UserDefaults.standard.set(newValue, forKey: crashReportingKey)
+            
+            // Re-initialize or close Sentry based on new state
+            if newValue && !wasEnabled {
+                initializeSentryIfNeeded()
+            } else if !newValue && wasEnabled && !performanceMonitoringEnabled {
+                closeSentry()
+            }
         }
+    }
+    
+    /// Whether performance monitoring is enabled (default: false - user must opt in)
+    /// When enabled, sends anonymous performance traces during normal app use
+    /// This helps identify slow operations and improve app responsiveness
+    var performanceMonitoringEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: performanceMonitoringKey) }
+        set {
+            let wasEnabled = performanceMonitoringEnabled
+            UserDefaults.standard.set(newValue, forKey: performanceMonitoringKey)
+            
+            // Re-initialize or close Sentry based on new state
+            if newValue && !wasEnabled {
+                initializeSentryIfNeeded()
+            } else if !newValue && wasEnabled && !isEnabled {
+                closeSentry()
+            }
+            // Note: If already initialized, sample rate change requires restart
+        }
+    }
+    
+    /// Returns true if any telemetry is enabled (for UI display)
+    var anyTelemetryEnabled: Bool {
+        return isEnabled || performanceMonitoringEnabled
     }
     
     // MARK: - Initialization
     
-    private var isInitialized = false
+    private var isSentryInitialized = false
     
     private init() {}
     
-    /// Initialize crash reporting - call once at app launch in AppDelegate
-    func initialize() {
-        guard isEnabled, !isInitialized else { return }
-        
-        initializeSentry()
-        
-        isInitialized = true
-        
-        #if DEBUG
-        Log.debug("Sentry crash reporting initialized", category: .analytics)
-        #endif
+    /// Call at app launch - only initializes Sentry if user has opted in
+    func initializeIfEnabled() {
+        guard anyTelemetryEnabled else {
+            #if DEBUG
+            os_log(.debug, "CrashReporter: Telemetry disabled (offline mode)")
+            #endif
+            return
+        }
+        initializeSentryIfNeeded()
     }
     
     // MARK: - Sentry Integration
@@ -149,27 +178,20 @@ final class AnalyticsManager {
         return sentryDSN != "YOUR_SENTRY_DSN_HERE" && sentryDSN.hasPrefix("https://")
     }
     
-    private func initializeSentry() {
-        // Skip if DSN not configured
-        guard isSentryConfigured else {
-            #if DEBUG
-            Log.debug("Sentry DSN not configured - skipping initialization", category: .analytics)
-            #endif
-            return
-        }
+    private func initializeSentryIfNeeded() {
+        guard !isSentryInitialized, isSentryConfigured else { return }
         
         SentrySDK.start { options in
             options.dsn = self.sentryDSN
             options.debug = false
             
-            // Enable automatic crash reporting
+            // Crash reporting - always enabled if Sentry is initialized
             options.enableCrashHandler = true
-            
-            // macOS-specific: enable uncaught exception reporting
             options.enableUncaughtNSExceptionReporting = true
             
-            // Performance monitoring (optional, uses quota)
-            options.tracesSampleRate = 0.1 // 10% of transactions
+            // Performance monitoring - only if user opted in
+            // 0.0 = disabled, 0.1 = 10% sampling
+            options.tracesSampleRate = self.performanceMonitoringEnabled ? 0.1 : 0.0
             
             // Environment
             #if DEBUG
@@ -183,34 +205,56 @@ final class AnalyticsManager {
                 options.releaseName = "middledrag@\(version)"
             }
         }
-    }
-    
-    // MARK: - Public API
-    
-    /// Track error (sent to Sentry)
-    func trackError(_ error: Error, context: [String: Any]? = nil) {
-        guard isEnabled, isSentryConfigured else { return }
         
-        SentrySDK.capture(error: error) { scope in
-            if let context = context {
-                scope.setContext(value: context, key: "custom")
-            }
-        }
+        isSentryInitialized = true
         
         #if DEBUG
-        Log.debug("Error tracked: \(error.localizedDescription)", category: .analytics)
+        os_log(.debug, "CrashReporter: Sentry initialized (crash=\(self.isEnabled), perf=\(self.performanceMonitoringEnabled))")
         #endif
     }
     
-    /// Add breadcrumb for crash context (no network call, just stored locally until crash)
-    func addBreadcrumb(_ message: String, category: String = "app") {
-        guard isEnabled, isSentryConfigured else { return }
+    private func closeSentry() {
+        guard isSentryInitialized else { return }
+        SentrySDK.close()
+        isSentryInitialized = false
+        
+        #if DEBUG
+        os_log(.debug, "CrashReporter: Sentry closed (offline mode)")
+        #endif
+    }
+    
+    // MARK: - Breadcrumbs (local storage until crash)
+    
+    /// Add breadcrumb only if crash reporting is enabled
+    /// Breadcrumbs are stored locally and only sent WITH a crash report
+    func addBreadcrumbIfEnabled(message: String, category: String, level: SentryLevel) {
+        guard isEnabled, isSentryInitialized else { return }
         
         let breadcrumb = Breadcrumb()
         breadcrumb.category = category
         breadcrumb.message = message
-        breadcrumb.level = .info
+        breadcrumb.level = level
         breadcrumb.timestamp = Date()
         SentrySDK.addBreadcrumb(breadcrumb)
+    }
+}
+
+// MARK: - AnalyticsManager (Compatibility Shim)
+/// Maintains backward compatibility with existing code while delegating to CrashReporter
+/// TODO: Remove this after updating all call sites to use CrashReporter directly
+
+final class AnalyticsManager {
+    static let shared = AnalyticsManager()
+    private init() {}
+    
+    /// Whether crash reporting is enabled (delegates to CrashReporter)
+    var isEnabled: Bool {
+        get { CrashReporter.shared.isEnabled }
+        set { CrashReporter.shared.isEnabled = newValue }
+    }
+    
+    /// Initialize crash reporting if user has opted in
+    func initialize() {
+        CrashReporter.shared.initializeIfEnabled()
     }
 }

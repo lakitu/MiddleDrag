@@ -13,7 +13,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Application Lifecycle
     
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Initialize Sentry for crash reporting (no usage analytics)
+        // Initialize crash reporting only if user has opted in (offline by default)
         AnalyticsManager.shared.initialize()
         
         Log.info("MiddleDrag starting...", category: .app)

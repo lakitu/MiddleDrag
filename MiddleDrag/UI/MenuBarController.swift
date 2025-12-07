@@ -158,11 +158,23 @@ class MenuBarController: NSObject {
         
         submenu.addItem(NSMenuItem.separator())
         
-        // Analytics opt-out
+        // Telemetry section header
+        let telemetryHeader = NSMenuItem(title: "Help Improve MiddleDrag:", action: nil, keyEquivalent: "")
+        telemetryHeader.isEnabled = false
+        submenu.addItem(telemetryHeader)
+        
+        // Crash reporting (only sends on crash)
         submenu.addItem(createAdvancedMenuItem(
-            title: "Send Anonymous Usage Data",
-            isOn: AnalyticsManager.shared.isEnabled,
-            action: #selector(toggleAnalytics)
+            title: "Send Crash Reports",
+            isOn: CrashReporter.shared.isEnabled,
+            action: #selector(toggleCrashReporting)
+        ))
+        
+        // Performance monitoring (sends during use)
+        submenu.addItem(createAdvancedMenuItem(
+            title: "Send Performance Data",
+            isOn: CrashReporter.shared.performanceMonitoringEnabled,
+            action: #selector(togglePerformanceMonitoring)
         ))
         
         item.submenu = submenu
@@ -243,8 +255,13 @@ class MenuBarController: NSObject {
         NotificationCenter.default.post(name: .preferencesChanged, object: preferences)
     }
     
-    @objc private func toggleAnalytics() {
-        AnalyticsManager.shared.isEnabled.toggle()
+    @objc private func toggleCrashReporting() {
+        CrashReporter.shared.isEnabled.toggle()
+        buildMenu()  // Rebuild to update checkmark
+    }
+    
+    @objc private func togglePerformanceMonitoring() {
+        CrashReporter.shared.performanceMonitoringEnabled.toggle()
         buildMenu()  // Rebuild to update checkmark
     }
     
