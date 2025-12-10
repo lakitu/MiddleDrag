@@ -102,9 +102,12 @@ class MenuBarController: NSObject {
     }
     
     private func createMiddleDragItem() -> NSMenuItem {
-        let item = NSMenuItem(title: "Middle Drag", action: #selector(toggleMiddleDrag), keyEquivalent: "")
+        let item = NSMenuItem(title: "Drag", action: #selector(toggleMiddleDrag), keyEquivalent: "")
         item.target = self
-        item.state = preferences.middleDragEnabled ? .on : .off
+        let isMainEnabled = multitouchManager?.isEnabled ?? false
+        // Only show checkmark and enable if main toggle is on
+        item.isEnabled = isMainEnabled
+        item.state = (isMainEnabled && preferences.middleDragEnabled) ? .on : .off
         item.tag = MenuItemTag.middleDrag.rawValue
         return item
     }
