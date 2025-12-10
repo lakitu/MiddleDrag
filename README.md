@@ -10,6 +10,10 @@ Finally use your MacBook for CAD work without carrying a mouse.
 [![Homebrew](https://img.shields.io/badge/Homebrew-tap-brown?logo=homebrew)](https://github.com/NullPointerDepressiveDisorder/homebrew-tap)
 [![GitHub release](https://img.shields.io/github/v/release/NullPointerDepressiveDisorder/MiddleDrag)](https://github.com/NullPointerDepressiveDisorder/MiddleDrag/releases)
 
+Product Hunt Launch this Thursday!
+
+<a href="https://www.producthunt.com/products/middledrag?embed=true&utm_source=badge-featured&utm_medium=badge&utm_source=badge-middledrag" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1048423&theme=neutral&t=1765340411624" alt="MiddleDrag - three&#0045;finger&#0032;trackpad&#0032;gestures&#0032;for&#0032;middle&#0032;button&#0032;emulation | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
+
 <p align="center">
   <img src="assets/demo.gif" width="600" alt="MiddleDrag demo showing three-finger trackpad navigation in CAD software">
 </p>
