@@ -13,6 +13,7 @@ class MenuBarController: NSObject {
     private enum MenuItemTag: Int {
         case enabled = 1
         case launchAtLogin = 2
+        case middleDrag = 3
     }
     
     // MARK: - Initialization
@@ -64,6 +65,7 @@ class MenuBarController: NSObject {
         
         // Enable/Disable
         menu.addItem(createEnabledItem())
+        menu.addItem(createMiddleDragItem())
         menu.addItem(NSMenuItem.separator())
         
         // Settings
@@ -96,6 +98,14 @@ class MenuBarController: NSObject {
         item.target = self  // IMPORTANT: Set target
         item.state = (multitouchManager?.isEnabled ?? false) ? .on : .off
         item.tag = MenuItemTag.enabled.rawValue
+        return item
+    }
+    
+    private func createMiddleDragItem() -> NSMenuItem {
+        let item = NSMenuItem(title: "Middle Drag", action: #selector(toggleMiddleDrag), keyEquivalent: "")
+        item.target = self
+        item.state = preferences.middleDragEnabled ? .on : .off
+        item.tag = MenuItemTag.middleDrag.rawValue
         return item
     }
     
@@ -200,6 +210,20 @@ class MenuBarController: NSObject {
         
         updateStatusIcon(enabled: isEnabled)
         buildMenu()  // Rebuild to update status text
+    }
+    
+    @objc private func toggleMiddleDrag() {
+        preferences.middleDragEnabled.toggle()
+        
+        var config = multitouchManager?.configuration ?? GestureConfiguration()
+        config.middleDragEnabled = preferences.middleDragEnabled
+        multitouchManager?.updateConfiguration(config)
+        
+        if let item = statusItem.menu?.item(withTag: MenuItemTag.middleDrag.rawValue) {
+            item.state = preferences.middleDragEnabled ? .on : .off
+        }
+        
+        NotificationCenter.default.post(name: .preferencesChanged, object: preferences)
     }
     
     @objc private func setSensitivity(_ sender: NSMenuItem) {
