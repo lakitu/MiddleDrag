@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		EC3F440F2EDE4B9B00BD36A8 /* AnalyticsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC3F440E2EDE4B9B00BD36A8 /* AnalyticsManager.swift */; };
-		EC3F44122EDE4DA800BD36A8 /* SimpleAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = EC3F44112EDE4DA800BD36A8 /* SimpleAnalytics */; };
 		EC5F1E152ED8E37A0053F6A9 /* MultitouchFramework.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC5F1E012ED8E37A0053F6A9 /* MultitouchFramework.swift */; };
 		EC5F1E162ED8E37A0053F6A9 /* MenuBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC5F1E102ED8E37A0053F6A9 /* MenuBarController.swift */; };
 		EC5F1E172ED8E37A0053F6A9 /* AlertHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC5F1E0F2ED8E37A0053F6A9 /* AlertHelper.swift */; };
@@ -55,7 +54,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				EC93816B2EDE493A0012FDBE /* Sentry in Frameworks */,
-				EC3F44122EDE4DA800BD36A8 /* SimpleAnalytics in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -191,7 +189,6 @@
 			mainGroup = 1A0000008;
 			packageReferences = (
 				EC9381692EDE49030012FDBE /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
-				EC3F44102EDE4DA800BD36A8 /* XCRemoteSwiftPackageReference "swift-package" */,
 			);
 			productRefGroup = 1A0000010 /* Products */;
 			projectDirPath = "";
@@ -398,7 +395,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.2.6;
+				MARKETING_VERSION = 1.2.7;
 				OTHER_LDFLAGS = (
 					"-framework",
 					MultitouchSupport,
@@ -436,7 +433,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.2.6;
+				MARKETING_VERSION = 1.2.7;
 				OTHER_LDFLAGS = (
 					"-framework",
 					MultitouchSupport,
@@ -474,14 +471,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		EC3F44102EDE4DA800BD36A8 /* XCRemoteSwiftPackageReference "swift-package" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/simpleanalytics/swift-package";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.4.1;
-			};
-		};
 		EC9381692EDE49030012FDBE /* XCRemoteSwiftPackageReference "sentry-cocoa" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/getsentry/sentry-cocoa.git";
@@ -493,11 +482,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		EC3F44112EDE4DA800BD36A8 /* SimpleAnalytics */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = EC3F44102EDE4DA800BD36A8 /* XCRemoteSwiftPackageReference "swift-package" */;
-			productName = SimpleAnalytics;
-		};
 		EC93816A2EDE493A0012FDBE /* Sentry */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = EC9381692EDE49030012FDBE /* XCRemoteSwiftPackageReference "sentry-cocoa" */;

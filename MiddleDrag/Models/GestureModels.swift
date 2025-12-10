@@ -35,6 +35,9 @@ struct GestureConfiguration {
     var requiresExactlyThreeFingers: Bool = true
     var blockSystemGestures: Bool = false
     
+    // Feature toggles
+    var middleDragEnabled: Bool = true  // Allow disabling drag while keeping tap
+    
     // Velocity scaling
     var enableVelocityBoost: Bool = true
     var maxVelocityBoost: Float = 2.0
@@ -62,6 +65,7 @@ struct UserPreferences: Codable {
     var smoothingFactor: Double = 0.3
     var requiresExactlyThreeFingers: Bool = true
     var blockSystemGestures: Bool = false
+    var middleDragEnabled: Bool = true  // Allow disabling drag while keeping tap
     
     /// Convert to GestureConfiguration
     var gestureConfig: GestureConfiguration {
@@ -70,7 +74,8 @@ struct UserPreferences: Codable {
             smoothingFactor: Float(smoothingFactor),
             tapThreshold: tapThreshold,
             requiresExactlyThreeFingers: requiresExactlyThreeFingers,
-            blockSystemGestures: blockSystemGestures
+            blockSystemGestures: blockSystemGestures,
+            middleDragEnabled: middleDragEnabled
         )
     }
 }
