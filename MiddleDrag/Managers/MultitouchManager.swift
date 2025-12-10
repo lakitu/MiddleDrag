@@ -263,11 +263,13 @@ extension MultitouchManager: GestureRecognizerDelegate {
     }
     
     func gestureRecognizerDidBeginDragging(_ recognizer: GestureRecognizer) {
+        guard configuration.middleDragEnabled else { return }
         let mouseLocation = MouseEventGenerator.currentMouseLocation
         mouseGenerator.startDrag(at: mouseLocation)
     }
     
     func gestureRecognizerDidUpdateDragging(_ recognizer: GestureRecognizer, with data: GestureData) {
+        guard configuration.middleDragEnabled else { return }
         let delta = data.frameDelta(from: configuration)
         
         guard delta.x != 0 || delta.y != 0 else { return }
@@ -280,6 +282,7 @@ extension MultitouchManager: GestureRecognizerDelegate {
     }
     
     func gestureRecognizerDidEndDragging(_ recognizer: GestureRecognizer) {
+        guard configuration.middleDragEnabled else { return }
         mouseGenerator.endDrag()
     }
 }
