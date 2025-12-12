@@ -39,7 +39,7 @@ MiddleDrag requires the following system permissions:
 ### What MiddleDrag does NOT do
 
 - Does not collect personal information
-- Does not transmit sensitive data (analytics are opt-out and privacy-focused)
+- Does not transmit any data by default (crash reporting is opt-in only)
 - Does not modify system files
 - Does not run background processes when disabled
 
@@ -51,4 +51,3 @@ Release builds are signed with an ad-hoc signature. Users may need to grant perm
 
 We monitor dependencies for known vulnerabilities. Current dependencies:
 - [Sentry](https://github.com/getsentry/sentry-cocoa) - Crash reporting
-- [SimpleAnalytics](https://github.com/simpleanalytics/swift-package) - Anonymous usage analytics
