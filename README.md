@@ -9,6 +9,7 @@ Finally use your MacBook for CAD work without carrying a mouse.
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Homebrew](https://img.shields.io/badge/Homebrew-tap-brown?logo=homebrew)](https://github.com/NullPointerDepressiveDisorder/homebrew-tap)
 [![GitHub release](https://img.shields.io/github/v/release/NullPointerDepressiveDisorder/MiddleDrag)](https://github.com/NullPointerDepressiveDisorder/MiddleDrag/releases)
+[![Downloads](https://img.shields.io/github/downloads/NullPointerDepressiveDisorder/MiddleDrag/total?color=brightgreen)](https://github.com/NullPointerDepressiveDisorder/MiddleDrag/releases)
 
 <p align="center">
   <img src="assets/demo.gif" width="600" alt="MiddleDrag demo showing three-finger trackpad navigation in CAD software">
