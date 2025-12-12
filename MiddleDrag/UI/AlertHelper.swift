@@ -4,6 +4,8 @@ import Cocoa
 class AlertHelper {
     
     static func showAbout() {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
+        
         let alert = NSAlert()
         alert.messageText = "MiddleDrag"
         alert.icon = NSImage(systemSymbolName: "hand.raised.fingers.spread", accessibilityDescription: nil)
@@ -11,7 +13,7 @@ class AlertHelper {
         Three-finger drag for middle mouse button emulation.
         Works alongside your system gestures!
         
-        Version 2.0.0
+        Version \(version)
         
         ✨ Features:
         • Works WITH system gestures enabled
