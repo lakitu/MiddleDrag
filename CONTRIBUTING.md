@@ -6,8 +6,8 @@ Thanks for your interest in contributing to MiddleDrag! This project aims to bri
 
 ### Prerequisites
 
-- macOS 14.0 (Sonoma) or later
-- Xcode 15.0 or later
+- macOS 15.0 (Sequoia) or later
+- Xcode 16.0 or later
 - A trackpad (built-in or Magic Trackpad)
 
 ### Setting Up the Development Environment
