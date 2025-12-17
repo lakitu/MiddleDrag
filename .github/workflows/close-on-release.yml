@@ -14,8 +14,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Find all open issues with the specific label
-          issues=$(gh issue list --label "fixed-pending-release" --json number --jq '.[].number')
+          issues=$(gh issue list --repo ${{ github.repository }} --label "fixed-pending-release" --json number --jq '.[].number')
           
           for issue in $issues; do
-            gh issue close "$issue" --comment "Closed by release ${{ github.event.release.tag_name }}"
+            gh issue close "$issue" --repo ${{ github.repository }} --comment "Closed by release ${{ github.event.release.tag_name }}"
           done
