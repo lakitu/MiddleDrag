@@ -80,11 +80,22 @@ jobs:
             git fetch origin "$BRANCH_NAME"
             git rebase "origin/$BRANCH_NAME"
       
-            git push origin "$BRANCH_NAME"
+            git push origin "$BRANCH_NAME" --force-with-lease
             git push origin "v$VERSION"
+
+            # Capture the new commit SHA after amendment
+            echo "NEW_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
           else
             echo "Version matches. Proceeding..."
           fi
+
+      - name: Re-checkout amended commit
+        if: github.event_name == 'workflow_dispatch' && inputs.version != ''
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          ref: ${{ env.NEW_SHA }}
+          fetch-depth: 0
       
       - name: Get version
         id: version
