@@ -87,6 +87,8 @@ jobs:
             echo "NEW_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
           else
             echo "Version matches. Proceeding..."
+            # Still set NEW_SHA for downstream steps that may reference it
+            echo "NEW_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
           fi
 
       - name: Re-checkout amended commit
