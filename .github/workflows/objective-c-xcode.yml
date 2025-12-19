@@ -1,17 +1,16 @@
-name: Build
+name: Build Check
 permissions:
   contents: read
 
 on:
   push:
-    branches: 
-      - '**'
+    branches:
+      - main
   pull_request:
     branches:
-      - '**'
+      - main
 
 jobs:
-
   pre_job:
     runs-on: ubuntu-latest
     outputs:
@@ -23,18 +22,18 @@ jobs:
   build:
     needs: pre_job
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
-    name: Build MiddleDrag
+    name: Quick Build Check
     runs-on: macos-15
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
       - name: Build
         run: |
           xcodebuild -scheme MiddleDrag \
             -project MiddleDrag.xcodeproj \
-            -configuration Release \
+            -configuration Debug \
             -destination "platform=macOS" \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
