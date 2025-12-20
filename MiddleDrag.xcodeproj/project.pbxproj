@@ -486,7 +486,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.3.2;
+				MARKETING_VERSION = 1.3.3;
 				OTHER_LDFLAGS = (
 					"-framework",
 					MultitouchSupport,
@@ -526,7 +526,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.3.2;
+				MARKETING_VERSION = 1.3.3;
 				OTHER_LDFLAGS = (
 					"-framework",
 					MultitouchSupport,
