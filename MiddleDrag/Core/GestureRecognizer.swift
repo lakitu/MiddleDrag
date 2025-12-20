@@ -1,3 +1,4 @@
+import Cocoa
 import CoreGraphics
 import Foundation
 
@@ -36,17 +37,63 @@ class GestureRecognizer {
     ///   - touches: Raw pointer to touch data array
     ///   - count: Number of touches in the array
     ///   - timestamp: Timestamp of the touch frame
-    func processTouches(_ touches: UnsafeMutableRawPointer, count: Int, timestamp: Double) {
+    ///   - modifierFlags: Current modifier key flags (captured on main thread by caller)
+    func processTouches(
+        _ touches: UnsafeMutableRawPointer, count: Int, timestamp: Double,
+        modifierFlags: CGEventFlags
+    ) {
         let touchArray = touches.bindMemory(to: MTTouch.self, capacity: count)
+
+        // Check modifier key requirement first (if enabled)
+        if configuration.requireModifierKey {
+            let requiredFlagPresent: Bool
+            switch configuration.modifierKeyType {
+            case .shift:
+                requiredFlagPresent = modifierFlags.contains(.maskShift)
+            case .control:
+                requiredFlagPresent = modifierFlags.contains(.maskControl)
+            case .option:
+                requiredFlagPresent = modifierFlags.contains(.maskAlternate)
+            case .command:
+                requiredFlagPresent = modifierFlags.contains(.maskCommand)
+            }
+
+            if !requiredFlagPresent {
+                // Required modifier not held - cancel any active gesture and return
+                if state != .idle {
+                    handleGestureCancel()
+                }
+                return
+            }
+        }
 
         // Collect only valid touching fingers (state 3 = touching down, state 4 = active)
         // Skip state 5 (lifting), 6 (lingering), 7 (gone)
+        // Apply palm rejection filters
         var validFingers: [MTPoint] = []
 
         for i in 0..<count {
             let touch = touchArray[i]
             if touch.state == 3 || touch.state == 4 {
-                validFingers.append(touch.normalizedVector.position)
+                let position = touch.normalizedVector.position
+
+                // Palm rejection: Exclusion zone filter
+                // Skip touches in the bottom portion of trackpad (where palm rests)
+                if configuration.exclusionZoneEnabled {
+                    if position.y < configuration.exclusionZoneSize {
+                        continue  // Skip this touch
+                    }
+                }
+
+                // Palm rejection: Contact size filter
+                // Skip touches that are too large (palms have larger contact area)
+                if configuration.contactSizeFilterEnabled {
+                    if touch.zTotal > configuration.maxContactSize {
+                        continue  // Skip this touch - likely a palm
+                    }
+                }
+
+                validFingers.append(position)
             }
         }
 
