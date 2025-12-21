@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 90;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -64,25 +64,21 @@
 		EC5F1E242ED8E37A0053F6A9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		MDT00000003 /* GestureModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GestureModelsTests.swift; sourceTree = "<group>"; };
 		MDT00000004 /* TouchModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchModelsTests.swift; sourceTree = "<group>"; };
-		MDT00000017 /* GestureRecognizerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GestureRecognizerTests.swift; sourceTree = "<group>"; };
 		MDT00000005 /* MiddleDragTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MiddleDragTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		MDT00000017 /* GestureRecognizerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GestureRecognizerTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		1A0000007 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 				EC93816B2EDE493A0012FDBE /* Sentry in Frameworks */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		MDT00000010 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
@@ -195,8 +191,6 @@
 			);
 			buildRules = (
 			);
-			dependencies = (
-			);
 			name = MiddleDrag;
 			productName = MiddleDrag;
 			productReference = 1A0000004 /* MiddleDrag.app */;
@@ -239,7 +233,6 @@
 				};
 			};
 			buildConfigurationList = 1A0000016 /* Build configuration list for PBXProject "MiddleDrag" */;
-			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -250,6 +243,7 @@
 			packageReferences = (
 				EC9381692EDE49030012FDBE /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
 			);
+			preferredProjectObjectVersion = 90;
 			productRefGroup = 1A0000010 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -263,18 +257,14 @@
 /* Begin PBXResourcesBuildPhase section */
 		1A0000014 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 				EC5F1E232ED8E37A0053F6A9 /* Assets.xcassets in Resources */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		MDT00000011 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
@@ -282,29 +272,36 @@
 		EC3F44142EDE5CBB00BD36A8 /* Upload Debug Symbols & Source Context */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
 			inputPaths = (
 				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${EXECUTABLE_NAME}",
 			);
 			name = "Upload Debug Symbols & Source Context";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\nif [[ \"$(uname -m)\" == arm64 ]]; then\n    export PATH=\"/opt/homebrew/bin:$PATH\"\nfi\nif which sentry-cli >/dev/null; then\nexport SENTRY_ORG=karan-mohindroo\nexport SENTRY_PROJECT=apple-macos\nERROR=$(sentry-cli debug-files upload \\\n--include-sources \\\n\"$DWARF_DSYM_FOLDER_PATH\" 2>&1 >/dev/null)\nif [ ! $? -eq 0 ]; then\necho \"warning: sentry-cli - $ERROR\"\nfi\nelse\necho \"warning: sentry-cli not installed, download from https://github.com/getsentry/sentry-cli/releases\"\nfi\n";
+			shellScript = (
+				"# Type a script or drag a script file from your workspace to insert its path.",
+				"if [[ \"$(uname -m)\" == arm64 ]]; then",
+				"    export PATH=\"/opt/homebrew/bin:$PATH\"",
+				"fi",
+				"if which sentry-cli >/dev/null; then",
+				"export SENTRY_ORG=karan-mohindroo",
+				"export SENTRY_PROJECT=apple-macos",
+				"ERROR=$(sentry-cli debug-files upload \\",
+				"--include-sources \\",
+				"\"$DWARF_DSYM_FOLDER_PATH\" 2>&1 >/dev/null)",
+				"if [ ! $? -eq 0 ]; then",
+				"echo \"warning: sentry-cli - $ERROR\"",
+				"fi",
+				"else",
+				"echo \"warning: sentry-cli not installed, download from https://github.com/getsentry/sentry-cli/releases\"",
+				"fi",
+				"",
+			);
 		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		1A0000013 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 				EC5F1E152ED8E37A0053F6A9 /* MultitouchFramework.swift in Sources */,
 				EC5F1E162ED8E37A0053F6A9 /* MenuBarController.swift in Sources */,
@@ -321,11 +318,9 @@
 				EC5F1E212ED8E37A0053F6A9 /* MouseEventGenerator.swift in Sources */,
 				EC5F1E222ED8E37A0053F6A9 /* MiddleDragApp.swift in Sources */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		MDT00000009 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 				MDT00000001 /* GestureModelsTests.swift in Sources */,
 				MDT00000002 /* TouchModelsTests.swift in Sources */,
@@ -334,7 +329,6 @@
 				EC5522602EF5441F00BBEF33 /* GestureModels.swift in Sources */,
 				EC5522612EF5441F00BBEF33 /* TouchModels.swift in Sources */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
@@ -347,7 +341,7 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		1A0000017 /* Debug */ = {
+		1A0000017 /* Debug configuration for PBXProject "MiddleDrag" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -407,7 +401,7 @@
 			};
 			name = Debug;
 		};
-		1A0000018 /* Release */ = {
+		1A0000018 /* Release configuration for PBXProject "MiddleDrag" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -460,7 +454,7 @@
 			};
 			name = Release;
 		};
-		1A0000019 /* Debug */ = {
+		1A0000019 /* Debug configuration for PBXNativeTarget "MiddleDrag" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -500,7 +494,7 @@
 			};
 			name = Debug;
 		};
-		1A0000020 /* Release */ = {
+		1A0000020 /* Release configuration for PBXNativeTarget "MiddleDrag" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -540,7 +534,7 @@
 			};
 			name = Release;
 		};
-		MDT00000013 /* Debug */ = {
+		MDT00000013 /* Debug configuration for PBXNativeTarget "MiddleDragTests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
@@ -555,7 +549,7 @@
 			};
 			name = Debug;
 		};
-		MDT00000014 /* Release */ = {
+		MDT00000014 /* Release configuration for PBXNativeTarget "MiddleDragTests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
@@ -576,28 +570,25 @@
 		1A0000012 /* Build configuration list for PBXNativeTarget "MiddleDrag" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				1A0000019 /* Debug */,
-				1A0000020 /* Release */,
+				1A0000019 /* Debug configuration for PBXNativeTarget "MiddleDrag" */,
+				1A0000020 /* Release configuration for PBXNativeTarget "MiddleDrag" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 		1A0000016 /* Build configuration list for PBXProject "MiddleDrag" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				1A0000017 /* Debug */,
-				1A0000018 /* Release */,
+				1A0000017 /* Debug configuration for PBXProject "MiddleDrag" */,
+				1A0000018 /* Release configuration for PBXProject "MiddleDrag" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 		MDT00000008 /* Build configuration list for PBXNativeTarget "MiddleDragTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				MDT00000013 /* Debug */,
-				MDT00000014 /* Release */,
+				MDT00000013 /* Debug configuration for PBXNativeTarget "MiddleDragTests" */,
+				MDT00000014 /* Release configuration for PBXNativeTarget "MiddleDragTests" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
