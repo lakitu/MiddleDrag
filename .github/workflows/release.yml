@@ -50,14 +50,23 @@ jobs:
           swift --version
 
       - name: Bump Version
-        if: github.event_name == 'workflow_dispatch' && inputs.version != '' || github.event_name == 'push'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         run: |
           if [ -n "${{ inputs.version }}" ]; then
             VERSION="${{ inputs.version }}"
             VERSION="${VERSION#v}"
-          else
+          elif [ "${{ github.event_name }}" == "push" ]; then
             # For tag pushes, extract version from the tag
             VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            # workflow_dispatch without version input - use latest tag
+            VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+            if [ -z "$VERSION" ]; then
+              echo "Error: No version input provided and no existing tags found."
+              exit 1
+            fi
+            VERSION="${VERSION#v}"
+            echo "Using version from latest tag: $VERSION"
           fi
 
           PROJECT_VERSION=$(sed -nE 's/.*MARKETING_VERSION = ([0-9]+\.[0-9]+\.[0-9]+);.*/\1/p' MiddleDrag. xcodeproj/project.pbxproj | head -n 1)
@@ -99,7 +108,7 @@ jobs:
           fi
 
       - name: Re-checkout amended commit
-        if: github.event_name == 'workflow_dispatch' && inputs.version != '' || github.event_name == 'push'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         uses: actions/checkout@v4
         with:
           token: ${{ steps.app-token.outputs.token }}
