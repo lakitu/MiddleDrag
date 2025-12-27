@@ -42,7 +42,7 @@ private let deviceContactCallback: MTContactCallbackFunction = {
 // MARK: - DeviceMonitor
 
 /// Monitors multitouch devices and reports touch events
-class DeviceMonitor {
+class DeviceMonitor: TouchDeviceProviding {
 
     // MARK: - Properties
 
@@ -50,17 +50,29 @@ class DeviceMonitor {
     weak var delegate: DeviceMonitorDelegate?
 
     private var device: MTDeviceRef?
+    private var registeredDevices: Set<UnsafeMutableRawPointer> = []
     private var isRunning = false
+
+    /// Tracks whether this instance owns the global callback reference
+    private var ownsGlobalReference = false
 
     // MARK: - Lifecycle
 
     init() {
-        gDeviceMonitor = self
+        // Only take ownership of the global reference if no other instance owns it
+        // This prevents test interference when multiple DeviceMonitor instances are created
+        if gDeviceMonitor == nil {
+            gDeviceMonitor = self
+            ownsGlobalReference = true
+        }
     }
 
     deinit {
         stop()
-        gDeviceMonitor = nil
+        // Only clear the global reference if this instance owns it
+        if ownsGlobalReference && gDeviceMonitor === self {
+            gDeviceMonitor = nil
+        }
     }
 
     // MARK: - Public Interface
@@ -72,7 +84,7 @@ class DeviceMonitor {
         Log.info("DeviceMonitor starting...", category: .device)
 
         var deviceCount = 0
-        var registeredDevices: Set<UnsafeMutableRawPointer> = []
+        registeredDevices.removeAll()  // Clear any previous registrations
 
         // Try to get all devices
         if let deviceList = MTDeviceCreateList() {
@@ -123,12 +135,18 @@ class DeviceMonitor {
     }
 
     /// Stop monitoring
+    /// Safe to call even if start() was never called
     func stop() {
-        guard isRunning, let device = device else { return }
+        // Safe to call when not running - just return early
+        guard isRunning else { return }
 
-        MTUnregisterContactFrameCallback(device, deviceContactCallback)
-        MTDeviceStop(device)
+        // Unregister callbacks from ALL registered devices to prevent leaks
+        for deviceRef in registeredDevices {
+            MTUnregisterContactFrameCallback(deviceRef, deviceContactCallback)
+            MTDeviceStop(deviceRef)
+        }
 
+        registeredDevices.removeAll()
         self.device = nil
         isRunning = false
 
