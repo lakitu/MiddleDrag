@@ -126,18 +126,13 @@ jobs:
           elif [ "${{ github.event_name }}" == "push" ]; then
             VERSION="${GITHUB_REF#refs/tags/v}"
           else
-            # Try to get version from latest release first
-            VERSION=$(gh release view --repo ${{ github.repository }} --json tagName -q '.tagName' 2>/dev/null || echo "")
+            # Use latest git tag (consistent with Bump Version step)
+            VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
             if [ -z "$VERSION" ]; then
-              # No release exists, fall back to latest git tag
-              echo "No release found, checking for latest git tag..."
-              VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-              if [ -z "$VERSION" ]; then
-                echo "Error: No version found. No release or tag exists."
-                exit 1
-              fi
-              echo "Using latest tag: $VERSION"
+              echo "Error: No version found. No tags exist."
+              exit 1
             fi
+            echo "Using version from latest tag: $VERSION"
             VERSION="${VERSION#v}"
           fi
 
