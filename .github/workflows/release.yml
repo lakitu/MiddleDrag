@@ -59,12 +59,12 @@ jobs:
             # For tag pushes, extract version from the tag
             VERSION="${GITHUB_REF#refs/tags/v}"
           fi
-      
+
           PROJECT_VERSION=$(sed -nE 's/.*MARKETING_VERSION = ([0-9]+\.[0-9]+\.[0-9]+);.*/\1/p' MiddleDrag. xcodeproj/project.pbxproj | head -n 1)
-      
+
           if [ "$VERSION" != "$PROJECT_VERSION" ]; then
             echo "Version mismatch ($PROJECT_VERSION vs $VERSION). Bumping..."
-      
+
             # Determine the branch to update
             if [[ "$GITHUB_REF" == refs/heads/* ]]; then
               BRANCH_NAME=${GITHUB_REF#refs/heads/}
@@ -73,24 +73,24 @@ jobs:
               BRANCH_NAME="main"
               echo "Tag push detected, using $BRANCH_NAME"
             fi
-      
+
             git fetch origin "$BRANCH_NAME"
             git checkout "$BRANCH_NAME"
             git reset --hard "origin/$BRANCH_NAME"
-      
+
             NOTES="${{ inputs.notes }}"
             ./bump-version.sh "$VERSION" "$NOTES"
-      
+
             # Rebase on latest main in case of new commits
             git fetch origin "$BRANCH_NAME"
             git rebase "origin/$BRANCH_NAME"
-      
+
             # Re-create the tag to point to HEAD after rebase
             git tag -f -a "v$VERSION" -m "$(git tag -l --format='%(contents)' "v$VERSION" 2>/dev/null || echo "Release v$VERSION")"
-      
+
             git push origin "$BRANCH_NAME" --force-with-lease
             git push origin "v$VERSION" --force
-      
+
             # Capture the new commit SHA after amendment
             echo "NEW_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
           else
@@ -117,10 +117,17 @@ jobs:
           elif [ "${{ github.event_name }}" == "push" ]; then
             VERSION="${GITHUB_REF#refs/tags/v}"
           else
+            # Try to get version from latest release first
             VERSION=$(gh release view --repo ${{ github.repository }} --json tagName -q '.tagName' 2>/dev/null || echo "")
             if [ -z "$VERSION" ]; then
-              echo "Error: No version found."
-              exit 1
+              # No release exists, fall back to latest git tag
+              echo "No release found, checking for latest git tag..."
+              VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+              if [ -z "$VERSION" ]; then
+                echo "Error: No version found. No release or tag exists."
+                exit 1
+              fi
+              echo "Using latest tag: $VERSION"
             fi
             VERSION="${VERSION#v}"
           fi
