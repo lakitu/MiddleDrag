@@ -1,7 +1,6 @@
 name: Close Issues on Release
 on:
   release:
-    types: [published, released]
 
 jobs:
   close-issues:
