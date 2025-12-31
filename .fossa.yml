@@ -3,12 +3,13 @@
 
 version: 3
 
-# Omit project name to use auto-detected GitHub URL (matches quick import)
+project:
+  id: github.com/NullPointerDepressiveDisorder/MiddleDrag
 
 targets:
   only:
-    - type: swift
-      path: MiddleDrag.xcodeproj/project.xcworkspace/xcshareddata/swiftpm
+    - type: xcode
+      path: MiddleDrag.xcodeproj
 
 # Exclude directories that shouldn't be scanned
 paths:
