@@ -76,16 +76,9 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-  fossa-scan:
-    needs: build-and-test
-    runs-on: ubuntu-latest
-    name: FOSSA Scan
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
       - name: FOSSA Scan
         uses: fossas/fossa-action@main
+        if: ${{ !cancelled() }}
         with:
           api-key: ${{ secrets.FOSSA_API_KEY }}
 
@@ -93,14 +86,17 @@ jobs:
         run: |
           echo "⏳ Waiting 60s for FOSSA to process the analysis..."
           sleep 60
+        if: ${{ !cancelled() }}
 
       - name: FOSSA Test
         uses: fossas/fossa-action@main
+        if: ${{ !cancelled() }}
         with:
           api-key: ${{ secrets.FOSSA_API_KEY }}
           run-tests: true
 
       - name: Add FOSSA Report to Summary
+        if: ${{ !cancelled() }}
         run: |
           echo "## FOSSA License Compliance" >> $GITHUB_STEP_SUMMARY
           echo "✅ FOSSA scan completed successfully" >> $GITHUB_STEP_SUMMARY
