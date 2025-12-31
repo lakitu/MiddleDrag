@@ -72,9 +72,12 @@ brew install --cask middledrag
 
 MiddleDrag isn't notarized with Apple (standard for open source apps). On first launch:
 
-**Right-click → Open → Click "Open"** in the dialog
+Close the alert, then go to **System Settings → Privacy & Security → Click "Open Anyway"**
 
-Or run: `xattr -cr /Applications/MiddleDrag.app`
+Or run in Terminal: **(Recommended)**
+```bash
+xattr -cr /Applications/MiddleDrag.app
+```
 
 ## Usage
 
