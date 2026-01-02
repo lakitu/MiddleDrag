@@ -9,7 +9,7 @@ project:
 targets:
   only:
     - type: swift
-      path: MiddleDrag.xcodeproj
+      path: .
 # Exclude directories that shouldn't be scanned
 paths:
   exclude:
