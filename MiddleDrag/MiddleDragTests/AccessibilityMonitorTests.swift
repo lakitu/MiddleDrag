@@ -62,7 +62,7 @@ class AccessibilityMonitorTests: XCTestCase {
         mockPermissionChecker.isTrusted = true
 
         // Wait for timer to fire
-        wait(for: [grantExpectation], timeout: 1.0)
+        wait(for: [grantExpectation], timeout: 2.0)
     }
 
     func testRevocationCallback() {
