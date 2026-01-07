@@ -38,7 +38,7 @@ jobs:
 
   package-and-certify:
     name: Package and Certify
-    needs: build
+    needs: [build, version]
     uses: ./.github/workflows/_package-and-certify.yml
     with:
       version: ${{ needs.version.outputs.version }}
