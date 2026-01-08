@@ -26,26 +26,31 @@ Mac trackpads don't have a middle mouse button. Many apps expect one.
 ## Use Cases
 
 ### Browsers
+
 - Open links in new background tabs
 - Close tabs with a click
 - Open bookmarks/history in new tabs
 
 ### Design & Creative Tools
+
 - Pan canvas in Figma, Photoshop, Illustrator, GIMP
 - Navigate large documents in PDF viewers
 - Scroll in any direction without modifier keys
 
 ### Development
+
 - Close editor tabs in VS Code, Sublime Text, IDEs
 - Middle-click paste in terminals (where supported)
 - Pan around large codebases in code visualization tools
 
 ### 3D & CAD Software
+
 - Orbit and pan viewports in Blender, FreeCAD, Fusion 360, SketchUp, Maya, ZBrush, OnShape
 - Navigate Google Earth and mapping applications
 - Essential for apps with broken or missing trackpad support
 
 ### Productivity
+
 - Autoscroll in supported applications
 - Any workflow that expects middle-mouse input
 
@@ -69,21 +74,10 @@ brew install --cask middledrag
 
 ### Manual Download
 
-1. Download from [Releases](https://github.com/NullPointerDepressiveDisorder/MiddleDrag/releases)
-2. Move `MiddleDrag.app` to Applications
-3. Launch and grant Accessibility permissions when prompted
-
-### Gatekeeper Notice
-
-MiddleDrag isn't notarized with Apple (standard for open source apps). On first launch:
-
-Close the alert, then go to **System Settings → Privacy & Security → Click "Open Anyway"**
-
-Or run in Terminal: **(Recommended)**
-
-```bash
-xattr -cr /Applications/MiddleDrag.app
-```
+1. Download the latest `.pkg` installer from [Releases](https://github.com/NullPointerDepressiveDisorder/MiddleDrag/releases)
+2. Open the installer and follow the prompts
+3. Launch MiddleDrag from your Applications folder
+4. Grant Accessibility permissions when prompted
 
 ## Usage
 
