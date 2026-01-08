@@ -64,18 +64,22 @@ jobs:
                   derived-data-path: build
                   universal-binary: "true"
 
-            - name: Set Artifact Name
+            - name: Create App Zip
               id: artifact
               run: |
                   VERSION="${{ inputs.version }}"
                   ARTIFACT_NAME="MiddleDrag-${VERSION}"
+
+                  cd build/Build/Products/Release
+                  zip -r -y "${GITHUB_WORKSPACE}/${ARTIFACT_NAME}.zip" MiddleDrag.app
+
                   echo "name=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
 
             - name: Upload Build Artifact
               uses: actions/upload-artifact@v4
               with:
                   name: ${{ steps.artifact.outputs.name }}
-                  path: build/Build/Products/Release/MiddleDrag.app
+                  path: ${{ steps.artifact.outputs.name }}.zip
                   retention-days: 1
 
             - name: Upload dSYM Artifact
