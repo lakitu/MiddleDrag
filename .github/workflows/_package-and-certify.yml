@@ -65,22 +65,22 @@ jobs:
           --version ${{ inputs.version }} \
           --install-location / \
           --sign "Developer ID Installer: Karan Mohindroo (${{ vars.TEAM_ID }})" \
-          MiddleDrag.pkg
+          MiddleDrag-${{ inputs.version }}.pkg
 
-          echo "pkg-name=MiddleDrag" >> $GITHUB_OUTPUT
+          echo "pkg-name=MiddleDrag-${{ inputs.version }}" >> $GITHUB_OUTPUT
 
       - name: Notarize app
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           NOTARY_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
         run: |
-          xcrun notarytool submit MiddleDrag.pkg \
+          xcrun notarytool submit MiddleDrag-${{ inputs.version }}.pkg \
           --apple-id "$APPLE_ID" \
           --team-id ${{ vars.TEAM_ID }} \
           --password "$NOTARY_PASSWORD" \
           --wait
 
-          xcrun stapler staple MiddleDrag.pkg
+          xcrun stapler staple MiddleDrag-${{ inputs.version }}.pkg
 
       - name: Upload Notarized app
         uses: actions/upload-artifact@v4

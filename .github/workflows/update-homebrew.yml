@@ -45,7 +45,7 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
 
           # Download and get SHA
-          curl -L -o MiddleDrag.pkg "https://github.com/${{ github.repository }}/releases/download/v${VERSION}/MiddleDrag.pkg"
+          curl -L -o MiddleDrag.pkg "https://github.com/${{ github.repository }}/releases/download/v${VERSION}/MiddleDrag-${VERSION}.pkg"
           SHA=$(shasum -a 256 MiddleDrag.pkg | awk '{print $1}')
 
           # Clone tap repo and update
@@ -61,11 +61,12 @@ jobs:
           awk '{
             # Replace .zip with .pkg in URL
             gsub(/\.zip/, ".pkg")
-            gsub(/MiddleDrag-#{version}\.zip/, "MiddleDrag.pkg")
+            gsub(/MiddleDrag-.*\.pkg/, "MiddleDrag-" ver ".pkg")
+            gsub(/MiddleDrag-.*\.zip/, "MiddleDrag-" ver ".pkg")
 
             # Replace app stanza with pkg stanza
             if ($0 ~ /app "MiddleDrag.app"/) {
-              print "  pkg \"MiddleDrag.pkg\""
+              print "  pkg \"MiddleDrag-" ver ".pkg\""
               print "  uninstall pkgutil: \"app.middledrag.MiddleDrag\""
             } else {
               print
