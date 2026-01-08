@@ -25,11 +25,11 @@ jobs:
       - name: download-app
         uses: actions/download-artifact@v4
         with:
-          name: MiddleDrag-${{ inputs.version }}
+          name: MiddleDrag-App-${{ inputs.version }}
           path: .
 
       - name: Unzip app
-        run: unzip -q MiddleDrag-${{ inputs.version }}.zip
+        run: unzip -q MiddleDrag-App-${{ inputs.version }}.zip
 
       - name: Install certificates
         env:
