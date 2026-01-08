@@ -68,11 +68,16 @@ jobs:
             gsub(/MiddleDrag-.*\.pkg/, "MiddleDrag-" ver ".pkg")
             gsub(/MiddleDrag-.*\.zip/, "MiddleDrag-" ver ".pkg")
 
-            # Replace app stanza with pkg stanza
+            # Replace app stanza with pkg stanza (if converting from zip)
             if ($0 ~ /app "MiddleDrag.app"/) {
               print "  pkg \"MiddleDrag-" ver ".pkg\""
               print "  uninstall pkgutil: \"app.middledrag.MiddleDrag\""
-            } else {
+            } 
+            # Update existing pkg stanza (if already pkg)
+            else if ($0 ~ /pkg "MiddleDrag.*.pkg"/) {
+              print "  pkg \"MiddleDrag-" ver ".pkg\""
+            }
+            else {
               print
             }
           }' Casks/middledrag.rb > Casks/middledrag.rb.tmp
