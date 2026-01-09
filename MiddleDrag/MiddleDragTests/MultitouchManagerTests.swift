@@ -195,6 +195,15 @@ final class MultitouchManagerTests: XCTestCase {
 
         manager.restart()
 
+        // Wait for async restart to complete
+        let expectation = XCTestExpectation(description: "Restart complete")
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + MultitouchManager.restartCleanupDelay + 0.05
+        ) {
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 1.0)
+
         XCTAssertFalse(manager.isMonitoring)
         XCTAssertFalse(manager.isEnabled)
     }
@@ -251,6 +260,76 @@ final class MultitouchManagerTests: XCTestCase {
         // Double stop when already stopped should not crash
         XCTAssertNoThrow(manager.stop())
         XCTAssertNoThrow(manager.stop())
+    }
+
+    func testRapidRestartDebouncesCalls() {
+        // Use a counter to track how many times the device provider factory is called.
+        // If debouncing works, we should see fewer creations than restart calls.
+        var creationCount = 0
+        let manager = MultitouchManager(
+            deviceProviderFactory: {
+                creationCount += 1
+                return MockDeviceMonitor()
+            },
+            eventTapSetup: { true }
+        )
+
+        manager.start()
+        XCTAssertEqual(creationCount, 1)  // Initial start
+
+        // Call restart multiple times rapidly
+        for _ in 0..<5 {
+            manager.restart()
+        }
+
+        // Wait for possible async execution (restart delay is 0.1s)
+        let expectation = XCTestExpectation(description: "Debounced restart complete")
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + MultitouchManager.restartCleanupDelay + 0.1
+        ) {
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 1.0)
+
+        // We expect:
+        // 1 initial creation
+        // + 1 creation for the final coalesced restart
+        // = 2 total creations
+        // If race condition existed (no debouncing), this would likely be > 2
+        XCTAssertEqual(creationCount, 2, "Should have coalesced multiple restarts")
+
+        manager.stop()
+    }
+
+    func testStopDuringRestartDelayStopsManager() {
+        let mockDevice = MockDeviceMonitor()
+        let manager = MultitouchManager(
+            deviceProviderFactory: { mockDevice }, eventTapSetup: { true })
+
+        manager.start()
+        XCTAssertTrue(manager.isMonitoring)
+
+        // Trigger restart - this enters the async delay window
+        // internalStop is called, so isMonitoring becomes false temporarily
+        manager.restart()
+        XCTAssertFalse(manager.isMonitoring)
+
+        // Call stop() immediately (during the delay)
+        // This MUST prevent the restart from happening
+        manager.stop()
+
+        // Wait for the restart delay to elapse
+        let expectation = XCTestExpectation(description: "Wait for restart delay")
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + MultitouchManager.restartCleanupDelay + 0.1
+        ) {
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 1.0)
+
+        // Verify manager is still stopped
+        XCTAssertFalse(manager.isMonitoring, "Manager should remain stopped")
+        XCTAssertFalse(manager.isEnabled, "Manager should be disabled")
     }
 
     // MARK: - GestureRecognizerDelegate State Transition Tests
@@ -1052,6 +1131,15 @@ final class MultitouchManagerTests: XCTestCase {
 
         manager.restart()
 
+        // Wait for async restart to complete
+        let expectation = XCTestExpectation(description: "Restart complete")
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + MultitouchManager.restartCleanupDelay + 0.05
+        ) {
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 1.0)
+
         // After restart, monitoring should still be active
         XCTAssertTrue(manager.isMonitoring)
         XCTAssertTrue(manager.isEnabled)
@@ -1076,6 +1164,16 @@ final class MultitouchManagerTests: XCTestCase {
 
         // Restart should preserve the disabled state
         manager.restart()
+
+        // Wait for async restart to complete
+        let expectation = XCTestExpectation(description: "Restart complete")
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + MultitouchManager.restartCleanupDelay + 0.05
+        ) {
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 1.0)
+
         XCTAssertFalse(manager.isEnabled)
         XCTAssertTrue(manager.isMonitoring)
 
@@ -1105,12 +1203,173 @@ final class MultitouchManagerTests: XCTestCase {
         }
         wait(for: [setupExpectation], timeout: 1.0)
 
-        // Restart should clean up the gesture state
+        // Restart should clean up the gesture state immediately (before async delay)
         manager.restart()
 
-        XCTAssertTrue(manager.isMonitoring)
-        XCTAssertFalse(manager.isActivelyDragging)  // Verify gesture state was cleaned up
+        // Gesture state is cleaned up synchronously in internalStop()
+        XCTAssertFalse(manager.isActivelyDragging)
         XCTAssertFalse(manager.isInThreeFingerGesture)
+
+        // Wait for async restart to complete
+        let restartExpectation = XCTestExpectation(description: "Restart complete")
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + MultitouchManager.restartCleanupDelay + 0.05
+        ) {
+            restartExpectation.fulfill()
+        }
+        wait(for: [restartExpectation], timeout: 1.0)
+
+        XCTAssertTrue(manager.isMonitoring)
+
+        manager.stop()
+    }
+
+    // MARK: - Race Condition Prevention Tests (restart delay)
+    // These tests verify the fix for CFRelease(NULL) crashes caused by
+    // concurrent device operations during wake from sleep.
+
+    func testRestartUsesAsyncDelayForFrameworkCleanup() {
+        // Verifies that restart() uses an async delay instead of blocking Thread.sleep.
+        // This ensures the main thread is not blocked during wake-from-sleep.
+        let mockDevice = MockDeviceMonitor()
+        let manager = MultitouchManager(
+            deviceProviderFactory: { mockDevice }, eventTapSetup: { true })
+
+        manager.start()
+        XCTAssertEqual(mockDevice.startCallCount, 1)
+
+        // restart() should return immediately (not block for 100ms)
+        let startTime = CACurrentMediaTime()
+        manager.restart()
+        let elapsed = CACurrentMediaTime() - startTime
+
+        // Should return quickly since delay is async
+        XCTAssertLessThan(elapsed, 0.05, "restart() should not block the calling thread")
+
+        // But the actual restart happens after the delay
+        XCTAssertEqual(mockDevice.startCallCount, 1)  // Not yet restarted
+
+        // Wait for async restart to complete
+        let expectation = XCTestExpectation(description: "Restart complete")
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + MultitouchManager.restartCleanupDelay + 0.05
+        ) {
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 1.0)
+
+        XCTAssertEqual(mockDevice.startCallCount, 2)  // Now restarted
+
+        manager.stop()
+    }
+
+    func testRestartCleanupDelayConstantExists() {
+        // Verify the delay constant is defined and has a reasonable value
+        XCTAssertGreaterThan(
+            MultitouchManager.restartCleanupDelay, 0,
+            "restartCleanupDelay should be positive")
+        XCTAssertLessThanOrEqual(
+            MultitouchManager.restartCleanupDelay, 0.5,
+            "restartCleanupDelay should not be excessive")
+    }
+
+    func testRapidRestartCyclesDoNotCrash() {
+        // Simulates rapid wake-from-sleep scenarios where multiple restart
+        // calls could occur in quick succession.
+        let mockDevice = MockDeviceMonitor()
+        let manager = MultitouchManager(
+            deviceProviderFactory: { mockDevice }, eventTapSetup: { true })
+
+        manager.start()
+
+        // Multiple rapid restarts - each queues an async restart
+        for _ in 0..<3 {
+            XCTAssertNoThrow(manager.restart())
+        }
+
+        // Wait for all async restarts to complete
+        let expectation = XCTestExpectation(description: "All restarts complete")
+        DispatchQueue.main.asyncAfter(deadline: .now() + MultitouchManager.restartCleanupDelay * 4)
+        {
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 2.0)
+
+        // Should still be monitoring after all restarts
+        XCTAssertTrue(manager.isMonitoring)
+
+        manager.stop()
+    }
+
+    func testRestartDuringActiveGestureDoesNotCrash() {
+        // Tests that restarting while a gesture is in progress doesn't crash.
+        // This covers the scenario where sleep occurs during active use.
+        let mockDevice = MockDeviceMonitor()
+        let manager = MultitouchManager(
+            deviceProviderFactory: { mockDevice }, eventTapSetup: { true })
+        let recognizer = GestureRecognizer()
+
+        var config = GestureConfiguration()
+        config.middleDragEnabled = true
+        manager.updateConfiguration(config)
+
+        manager.start()
+
+        // Start a gesture
+        manager.gestureRecognizerDidStart(recognizer, at: MTPoint(x: 0.5, y: 0.5))
+        manager.gestureRecognizerDidBeginDragging(recognizer)
+
+        // Wait for state to settle
+        let gestureExpectation = XCTestExpectation(description: "Gesture active")
+        DispatchQueue.main.async {
+            gestureExpectation.fulfill()
+        }
+        wait(for: [gestureExpectation], timeout: 1.0)
+
+        // Restart during active gesture should not crash
+        XCTAssertNoThrow(manager.restart())
+
+        // Gesture state should be cleaned up immediately (synchronous in internalStop)
+        XCTAssertFalse(manager.isActivelyDragging)
+        XCTAssertFalse(manager.isInThreeFingerGesture)
+
+        // Wait for async restart to complete
+        let restartExpectation = XCTestExpectation(description: "Restart complete")
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + MultitouchManager.restartCleanupDelay + 0.05
+        ) {
+            restartExpectation.fulfill()
+        }
+        wait(for: [restartExpectation], timeout: 1.0)
+
+        XCTAssertTrue(manager.isMonitoring)
+
+        manager.stop()
+    }
+
+    func testRestartFromBackgroundThreadDoesNotCrash() {
+        // Tests restart being called from a different thread (simulating
+        // the wake notification arriving on a background queue).
+        let mockDevice = MockDeviceMonitor()
+        let manager = MultitouchManager(
+            deviceProviderFactory: { mockDevice }, eventTapSetup: { true })
+
+        manager.start()
+
+        let expectation = XCTestExpectation(description: "Background restart complete")
+        DispatchQueue.global().async {
+            manager.restart()
+            // Wait for async restart to complete before fulfilling
+            DispatchQueue.main.asyncAfter(
+                deadline: .now() + MultitouchManager.restartCleanupDelay + 0.1
+            ) {
+                expectation.fulfill()
+            }
+        }
+
+        wait(for: [expectation], timeout: 2.0)
+
+        XCTAssertTrue(manager.isMonitoring)
 
         manager.stop()
     }

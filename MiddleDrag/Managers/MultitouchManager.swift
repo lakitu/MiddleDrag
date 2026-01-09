@@ -5,6 +5,15 @@ import Foundation
 /// Main manager that coordinates multitouch monitoring and gesture recognition
 class MultitouchManager {
 
+    // MARK: - Constants
+
+    /// Delay after stopping before restarting devices during wake-from-sleep.
+    /// This allows the MultitouchSupport framework's internal thread (mt_ThreadedMTEntry)
+    /// to fully complete cleanup before we start new devices.
+    /// Value determined empirically: 100ms is sufficient to avoid CFRelease(NULL) crashes
+    /// caused by the framework accessing deallocated resources.
+    static let restartCleanupDelay: TimeInterval = 0.1
+
     // MARK: - Properties
 
     /// Current gesture configuration
@@ -45,6 +54,9 @@ class MultitouchManager {
     // Sleep/wake observers for reinitializing after system wake
     private var sleepObserver: NSObjectProtocol?
     private var wakeObserver: NSObjectProtocol?
+
+    // Work item for debouncing restarts
+    private var restartWorkItem: DispatchWorkItem?
 
     // Processing queue
     private let gestureQueue = DispatchQueue(label: "com.middledrag.gesture", qos: .userInteractive)
@@ -132,7 +144,13 @@ class MultitouchManager {
 
     /// Stop monitoring
     func stop() {
-        guard isMonitoring else { return }
+        // Cancel any pending restart
+        restartWorkItem?.cancel()
+        restartWorkItem = nil
+
+        // If not monitoring AND no wake observer (normal stopped state), just return
+        // We must proceed if either isMonitoring OR wakeObserver exists (meaning we might be in restart delay)
+        guard isMonitoring || wakeObserver != nil else { return }
 
         removeSleepWakeObservers()
 
@@ -156,7 +174,31 @@ class MultitouchManager {
         // Stop without removing sleep/wake observers
         internalStop()
 
-        // Restart
+        // IMPORTANT: Delay before restarting to allow the MultitouchSupport
+        // framework's internal thread (mt_ThreadedMTEntry) to fully complete cleanup.
+        // Without this delay, there's a race condition where the framework thread
+        // may still be releasing resources when we try to start new devices,
+        // causing CFRelease(NULL) crashes.
+
+        // Cancel any pending restart to prevent race conditions with multiple rapid restarts
+        restartWorkItem?.cancel()
+
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.performRestart(wasEnabled: wasEnabled)
+        }
+
+        restartWorkItem = workItem
+
+        // Use async dispatch to avoid blocking the main thread during wake.
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + Self.restartCleanupDelay, execute: workItem)
+    }
+
+    /// Performs the actual restart after the cleanup delay
+    private func performRestart(wasEnabled: Bool) {
+        // Verify we should still restart (manager may have been stopped during delay)
+        guard wakeObserver != nil else { return }
+
         applyConfiguration()
         let eventTapSuccess = eventTapSetupFactory()
 
