@@ -42,8 +42,14 @@ jobs:
           echo "$CERTIFICATE_BASE64" | base64 --decode > certificate.p12
           echo "$INSTALLER_CERTIFICATE_BASE64" | base64 --decode > installer.p12
 
-          mkdir -p ~/Library/MobileDevice/Provisioning Profiles
-          echo "$PROVISIONING_PROFILE_BASE64" | base64 --decode > "$HOME/Library/MobileDevice/Provisioning Profiles/provisioning_profile.mobileprovision"
+          PROVISIONING_PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROVISIONING_PROFILE_DIR"
+          if [ -n "$PROVISIONING_PROFILE_BASE64" ]; then
+            echo "$PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROVISIONING_PROFILE_DIR/provisioning_profile.mobileprovision"
+            echo "Provisioning profile installed at: $PROVISIONING_PROFILE_DIR/provisioning_profile.mobileprovision"
+          else
+            echo "Warning: PROVISIONING_PROFILE_BASE64 is not set, skipping provisioning profile installation"
+          fi
 
           security create-keychain -p "" build.keychain
           security default-keychain -s build.keychain
@@ -55,7 +61,13 @@ jobs:
 
       - name: Sign app
         run: |
-          cp "$HOME/Library/MobileDevice/Provisioning Profiles/provisioning_profile.mobileprovision" MiddleDrag.app/Contents/embedded.provisionprofile
+          PROVISIONING_PROFILE_PATH="$HOME/Library/MobileDevice/Provisioning Profiles/provisioning_profile.mobileprovision"
+          if [ -f "$PROVISIONING_PROFILE_PATH" ]; then
+            cp "$PROVISIONING_PROFILE_PATH" MiddleDrag.app/Contents/embedded.provisionprofile
+            echo "Provisioning profile copied to app bundle"
+          else
+            echo "Warning: Provisioning profile not found at $PROVISIONING_PROFILE_PATH, skipping copy"
+          fi
 
           codesign --deep --force --options runtime \
           --sign "Developer ID Application: Karan Mohindroo (${{ vars.TEAM_ID }})" \
