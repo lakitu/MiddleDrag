@@ -24,6 +24,9 @@ jobs:
           done
           sudo dscl . -delete /Groups/nixbld || true
 
+      - name: Install Nix
+        uses: cachix/install-nix-action@main
+
       - name: Determine version
         id: version
         env:
