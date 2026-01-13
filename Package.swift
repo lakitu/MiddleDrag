@@ -6,10 +6,10 @@ import PackageDescription
 
 let package = Package(
     name: "MiddleDrag",
-    platforms: [.macOS(.v11)],
+    platforms: [.macOS("15.0")],
     products: [],
     dependencies: [
-        .package(url: "https://github.com/getsentry/sentry-cocoa.git", from: "9.0.0")
+        .package(url: "https://github.com/getsentry/sentry-cocoa.git", from: "9.1.0")
     ],
     targets: []
 )
