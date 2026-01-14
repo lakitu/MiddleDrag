@@ -135,42 +135,22 @@ jobs:
           fi
           
           # Remove existing entry for this version if present (handles re-runs)
-          # Using Python for reliable multi-line XML manipulation
           if grep -q "sparkle:version>${VERSION}<" appcast.xml; then
             echo "Version ${VERSION} already exists in appcast, removing old entry..."
-            python3 - "$VERSION" << 'PY'
-          import sys
-          version = sys.argv[1]
-          needle = f"sparkle:version>{version}<"
-
-          with open("appcast.xml", "r", encoding="utf-8") as f:
-              lines = f.readlines()
-
-          out_lines = []
-          in_item = False
-          buffer = []
-          skip_item = False
-
-          for line in lines:
-              if "<item>" in line and not in_item:
-                  in_item = True
-                  buffer = [line]
-                  skip_item = False
-              elif in_item:
-                  buffer.append(line)
-                  if needle in line:
-                      skip_item = True
-                  if "</item>" in line:
-                      if not skip_item:
-                          out_lines.extend(buffer)
-                      in_item = False
-                      buffer = []
-              else:
-                  out_lines.append(line)
-
-          with open("appcast.xml", "w", encoding="utf-8") as f:
-              f.writelines(out_lines)
-          PY
+            
+            # Use awk instead of Python for portability (no indentation issues)
+            awk -v ver="${VERSION}" '
+              /<item>/ { in_item=1; buffer=$0; next }
+              in_item {
+                buffer = buffer "\n" $0
+                if (/<\/item>/) {
+                  if (buffer !~ "sparkle:version>" ver "<") print buffer
+                  in_item=0; buffer=""
+                }
+                next
+              }
+              { print }
+            ' appcast.xml > appcast.xml.tmp && mv appcast.xml.tmp appcast.xml
           fi
           
           # Insert new item after </language> tag
