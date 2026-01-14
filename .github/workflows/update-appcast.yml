@@ -66,15 +66,28 @@ jobs:
           FILE_SIZE=$(stat -f%z "$PKG_FILE")
           
           # Generate EdDSA signature
-          # Try different sign_update invocations to find what works
           echo "Attempting to sign package..."
           echo "Private key length: ${#SPARKLE_PRIVATE_KEY} chars"
           
-          # Method: pass key via -s flag (Sparkle 2.x)
-          SIGNATURE=$(./Sparkle/bin/sign_update "$PKG_FILE" -s "$SPARKLE_PRIVATE_KEY" 2>&1)
+          # Show sign_update help to understand correct usage
+          echo "sign_update help:"
+          ./Sparkle/bin/sign_update --help || true
+          
+          # Try signing with key passed via stdin (documented method)
+          echo "Signing with stdin method..."
+          SIGNATURE=$(echo -n "$SPARKLE_PRIVATE_KEY" | ./Sparkle/bin/sign_update --ed-key-file - "$PKG_FILE" 2>&1) || true
           SIGN_EXIT_CODE=$?
           echo "sign_update exit code: $SIGN_EXIT_CODE"
           echo "sign_update output: $SIGNATURE"
+          
+          # If that failed, try alternate method
+          if [ $SIGN_EXIT_CODE -ne 0 ] || [ -z "$SIGNATURE" ]; then
+            echo "Trying alternate method with -f flag..."
+            SIGNATURE=$(./Sparkle/bin/sign_update -f <(echo -n "$SPARKLE_PRIVATE_KEY") "$PKG_FILE" 2>&1) || true
+            SIGN_EXIT_CODE=$?
+            echo "Alternate exit code: $SIGN_EXIT_CODE"
+            echo "Alternate output: $SIGNATURE"
+          fi
           
           if [ $SIGN_EXIT_CODE -ne 0 ] || [ -z "$SIGNATURE" ]; then
             echo "::error::Failed to generate EdDSA signature"
