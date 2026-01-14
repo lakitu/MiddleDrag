@@ -5,5 +5,30 @@
     <link>https://middledrag.app</link>
     <description>Most recent updates to MiddleDrag</description>
     <language>en</language>
+    <item>
+      <title>Version 1.3.8.6</title>
+      <pubDate>Wed, 14 Jan 2026 03:24:39 +0000</pubDate>
+      <sparkle:version>1.3.8.6</sparkle:version>
+      <sparkle:shortVersionString>1.3.8.6</sparkle:shortVersionString>
+      <description><![CDATA[Refactor preinstall script in CI workflow
+
+- Updated the preinstall script to improve formatting and readability by removing leading whitespace.
+- Ensured the script correctly handles quitting the MiddleDrag app, removing existing installations, and forgetting previous package receipts.
+
+These changes enhance the clarity and maintainability of the installation process.
+---
+**SHA256:** `e50363051103ce5c2df266347bf7dfae7a10745b0e67f4a5489b270782637e75`
+
+Refactor preinstall script in CI workflow
+
+- Updated the preinstall script to improve formatting and readability by removing leading whitespace.
+- Ensured the script correctly handles quitting the MiddleDrag app, removing existing installations, and forgetting previous package receipts.
+
+These changes enhance the clarity and maintainability of the installation process.
+---
+**SHA256:** `2520a97c1672f09b26eb4a1ee46ba409389a328cf4312db2c0adfa54bd057b44`]]></description>
+      <enclosure url="https://github.com/NullPointerDepressiveDisorder/MiddleDrag/releases/download/v1.3.8.6/MiddleDrag-1.3.8.6.pkg" sparkle:edSignature="SBJ6q0gkHtAMn1308le5aSBqQYCo0I9DbkD/AX1tFpqno4liYLCvIY47SesY4GYhzlp+WKn9QMVU6abYlf/SDw==" length="3090064" type="application/octet-stream" />
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+    </item>
   </channel>
 </rss>
