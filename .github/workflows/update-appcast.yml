@@ -66,9 +66,11 @@ jobs:
           FILE_SIZE=$(stat -f%z "$PKG_FILE")
           
           # Generate EdDSA signature
-          # sign_update requires -s flag to pass key directly (doesn't read from stdin)
-          SIGNATURE=$(./Sparkle/bin/sign_update -s "$SPARKLE_PRIVATE_KEY" "$PKG_FILE" 2>&1)
+          # sign_update requires: <package_file> <private_key_file>
+          echo -n "$SPARKLE_PRIVATE_KEY" > /tmp/sparkle_private_key
+          SIGNATURE=$(./Sparkle/bin/sign_update "$PKG_FILE" /tmp/sparkle_private_key 2>&1)
           SIGN_EXIT_CODE=$?
+          rm -f /tmp/sparkle_private_key
           
           if [ $SIGN_EXIT_CODE -ne 0 ] || [ -z "$SIGNATURE" ]; then
             echo "::error::Failed to generate EdDSA signature"
