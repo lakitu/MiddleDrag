@@ -67,41 +67,27 @@ jobs:
           
           # Generate EdDSA signature
           echo "Attempting to sign package..."
-          echo "Private key length: ${#SPARKLE_PRIVATE_KEY} chars"
           
-          # Show sign_update help to understand correct usage
-          echo "sign_update help:"
-          ./Sparkle/bin/sign_update --help || true
-          
-          # Try signing with key passed via stdin (documented method)
-          echo "Signing with stdin method..."
-          SIGNATURE=$(echo -n "$SPARKLE_PRIVATE_KEY" | ./Sparkle/bin/sign_update --ed-key-file - "$PKG_FILE" 2>&1) || true
+          # Sign using stdin method (pass key via pipe)
+          SIGN_OUTPUT=$(echo -n "$SPARKLE_PRIVATE_KEY" | ./Sparkle/bin/sign_update --ed-key-file - "$PKG_FILE" 2>&1)
           SIGN_EXIT_CODE=$?
           echo "sign_update exit code: $SIGN_EXIT_CODE"
-          echo "sign_update output: $SIGNATURE"
+          echo "sign_update output: $SIGN_OUTPUT"
           
-          # If that failed, try alternate method
-          if [ $SIGN_EXIT_CODE -ne 0 ] || [ -z "$SIGNATURE" ]; then
-            echo "Trying alternate method with -f flag..."
-            SIGNATURE=$(./Sparkle/bin/sign_update -f <(echo -n "$SPARKLE_PRIVATE_KEY") "$PKG_FILE" 2>&1) || true
-            SIGN_EXIT_CODE=$?
-            echo "Alternate exit code: $SIGN_EXIT_CODE"
-            echo "Alternate output: $SIGNATURE"
-          fi
-          
-          if [ $SIGN_EXIT_CODE -ne 0 ] || [ -z "$SIGNATURE" ]; then
+          if [ $SIGN_EXIT_CODE -ne 0 ]; then
             echo "::error::Failed to generate EdDSA signature"
-            echo "sign_update output: $SIGNATURE"
             exit 1
           fi
           
-          # Validate signature looks like base64 (basic sanity check)
-          if ! echo "$SIGNATURE" | grep -qE '^[A-Za-z0-9+/=]+$'; then
-            echo "::error::Generated signature doesn't look valid: $SIGNATURE"
+          # Extract just the signature value from sparkle:edSignature="..."
+          SIGNATURE=$(echo "$SIGN_OUTPUT" | grep -o 'edSignature="[^"]*"' | sed 's/edSignature="//;s/"$//')
+          
+          if [ -z "$SIGNATURE" ]; then
+            echo "::error::Could not extract signature from output: $SIGN_OUTPUT"
             exit 1
           fi
           
-          echo "Generated signature: ${SIGNATURE:0:20}... (truncated)"
+          echo "Extracted signature: ${SIGNATURE:0:20}... (truncated)"
           
           # Get release notes from GitHub and escape for XML
           RELEASE_NOTES=$(gh release view "v${VERSION}" --repo ${{ github.repository }} --json body -q '.body' | \
