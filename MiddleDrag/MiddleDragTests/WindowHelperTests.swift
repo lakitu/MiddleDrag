@@ -289,4 +289,52 @@ final class WindowHelperTests: XCTestCase {
         XCTAssertNotNil(result)
         XCTAssertNil(result?.bundleIdentifier)  // No PID means no bundle ID lookup
     }
+
+    // MARK: - isCursorOverDesktop Tests
+
+    func testIsCursorOverDesktop_DoesNotCrash() {
+        // Calling isCursorOverDesktop should never crash, even without windows
+        let result = WindowHelper.isCursorOverDesktop()
+        // Result could be true or false depending on environment
+        // Just verify it doesn't crash and returns a valid Bool
+        XCTAssertNotNil(result)
+    }
+
+    func testIsCursorOverDesktop_ReturnsBool() {
+        // isCursorOverDesktop should always return a Bool (true or false)
+        // We can't control the environment, but verify the return type
+        let result = WindowHelper.isCursorOverDesktop()
+        XCTAssertTrue(result == true || result == false)
+    }
+
+    func testIsCursorOverDesktop_WithMockData_NoWindow_ReturnsTrue() {
+        // When no window is found at point, should return true (over desktop)
+        let mockWindows: [[CFString: Any]] = []
+        let point = CGPoint(x: 200, y: 200)
+
+        let result = WindowHelper.isCursorOverDesktop(at: point, windowList: mockWindows)
+        XCTAssertTrue(result, "Should return true when no window exists at point")
+    }
+
+    func testIsCursorOverDesktop_WithMockData_WindowExists_ReturnsFalse() {
+        // When a window exists at point, should return false (not over desktop)
+        let mockWindows = [
+            createMockWindow(x: 100, y: 100, width: 400, height: 300, ownerName: "TestApp")
+        ]
+        let point = CGPoint(x: 200, y: 200)  // Inside the window
+
+        let result = WindowHelper.isCursorOverDesktop(at: point, windowList: mockWindows)
+        XCTAssertFalse(result, "Should return false when window exists at point")
+    }
+
+    func testIsCursorOverDesktop_WithMockData_PointOutsideWindow_ReturnsTrue() {
+        // When point is outside all windows, should return true (over desktop)
+        let mockWindows = [
+            createMockWindow(x: 100, y: 100, width: 400, height: 300, ownerName: "TestApp")
+        ]
+        let point = CGPoint(x: 50, y: 50)  // Outside the window
+
+        let result = WindowHelper.isCursorOverDesktop(at: point, windowList: mockWindows)
+        XCTAssertTrue(result, "Should return true when point is outside all windows")
+    }
 }

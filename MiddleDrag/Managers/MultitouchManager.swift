@@ -479,6 +479,21 @@ class MultitouchManager {
         mouseGenerator.smoothingFactor = configuration.smoothingFactor
         mouseGenerator.minimumMovementThreshold = CGFloat(configuration.minimumMovementThreshold)
     }
+
+    /// Thread-safe check if cursor is over desktop (no window underneath)
+    /// - Returns: true if cursor is over desktop, false if over a window
+    /// - Note: WindowHelper uses AppKit APIs (NSEvent.mouseLocation, NSScreen.main)
+    ///         which must be called from the main thread
+    private func shouldSkipGestureForDesktop() -> Bool {
+        guard configuration.ignoreDesktop else { return false }
+
+        let checkDesktop = { WindowHelper.isCursorOverDesktop() }
+        if Thread.isMainThread {
+            return checkDesktop()
+        } else {
+            return DispatchQueue.main.sync { checkDesktop() }
+        }
+    }
 }
 
 // MARK: - DeviceMonitorDelegate
@@ -536,6 +551,21 @@ extension MultitouchManager: GestureRecognizerDelegate {
             return
         }
 
+        // Check if cursor is over desktop when ignoreDesktop is enabled
+        // Note: This check happens BEFORE the window size filter. If both features are enabled,
+        //       ignoreDesktop takes precedence - gestures over desktop are blocked regardless
+        //       of window size filter settings. This prevents the behavioral inconsistency where
+        //       windowAtCursorMeetsMinimumSize would return true for desktop (no window found).
+        if shouldSkipGestureForDesktop() {
+            // Cursor is over desktop - skip tap
+            DispatchQueue.main.async { [weak self] in
+                self?.isInThreeFingerGesture = false
+                self?.gestureEndTime = CACurrentMediaTime()
+                self?.lastGestureWasActive = false
+            }
+            return
+        }
+
         // Check window size filter before performing tap
         // Note: WindowHelper uses AppKit APIs (NSEvent.mouseLocation, NSScreen.main)
         // which must be called from the main thread
@@ -576,7 +606,30 @@ extension MultitouchManager: GestureRecognizerDelegate {
     }
 
     func gestureRecognizerDidBeginDragging(_ recognizer: GestureRecognizer) {
-        guard configuration.middleDragEnabled else { return }
+        guard configuration.middleDragEnabled else {
+            // Reset state even if drag is disabled
+            DispatchQueue.main.async { [weak self] in
+                self?.isInThreeFingerGesture = false
+                self?.gestureEndTime = CACurrentMediaTime()
+                self?.lastGestureWasActive = false  // Drag was disabled, so not active
+            }
+            return
+        }
+
+        // Check if cursor is over desktop when ignoreDesktop is enabled
+        // Note: This check happens BEFORE the window size filter. If both features are enabled,
+        //       ignoreDesktop takes precedence - gestures over desktop are blocked regardless
+        //       of window size filter settings. This prevents the behavioral inconsistency where
+        //       windowAtCursorMeetsMinimumSize would return true for desktop (no window found).
+        if shouldSkipGestureForDesktop() {
+            // Cursor is over desktop - skip drag
+            DispatchQueue.main.async { [weak self] in
+                self?.isInThreeFingerGesture = false
+                self?.gestureEndTime = CACurrentMediaTime()
+                self?.lastGestureWasActive = false
+            }
+            return
+        }
 
         // Check window size filter before starting drag
         // Note: WindowHelper uses AppKit APIs (NSEvent.mouseLocation, NSScreen.main)
@@ -597,6 +650,11 @@ extension MultitouchManager: GestureRecognizerDelegate {
             }
             if !meetsMinimumSize {
                 // Window too small - skip drag
+                DispatchQueue.main.async { [weak self] in
+                    self?.isInThreeFingerGesture = false
+                    self?.gestureEndTime = CACurrentMediaTime()
+                    self?.lastGestureWasActive = false
+                }
                 return
             }
         }
