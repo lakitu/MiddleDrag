@@ -6,6 +6,218 @@
     <description>Most recent updates to MiddleDrag</description>
     <language>en</language>
     <item>
+      <title>Version 1.3.8.8</title>
+      <pubDate>Wed, 21 Jan 2026 10:11:03 +0000</pubDate>
+      <sparkle:version>1.3.8.8</sparkle:version>
+      <sparkle:shortVersionString>1.3.8.8</sparkle:shortVersionString>
+      <description><![CDATA[Refactor/documentation (#75)
+
+* Add trademark section to README.md
+
+- Introduced a new section outlining the trademark status of &quot;MiddleDrag,&quot; clarifying its ownership and usage rights.
+- Specified acceptable uses of the trademark, including forks for contribution and factual references, while advising against using the name for separate projects to prevent user confusion.
+
+* Update dependencies in Package.swift and project configuration
+
+- Added new dependencies for `swift-docc-plugin` and `swift-docc-symbolkit` in Package.swift to enhance documentation capabilities.
+- Updated project.pbxproj to include the new `snippet-extract` framework, ensuring proper integration of the new dependencies.
+- Modified Package.resolved to reflect the latest versions of the added packages, maintaining consistency across the project.
+
+* Update Package.swift and project configuration to add MiddleDrag target
+
+- Introduced a new target named &quot;MiddleDrag&quot; in Package.swift, with dependencies on Sentry and Sparkle.
+- Updated project.pbxproj to include references for the new target and documentation files, enhancing project structure and documentation capabilities.
+- Enabled documentation compiler settings to support the new target&apos;s documentation requirements.
+
+* fix: protect isMiddleMouseDown with lock for thread safety
+
+The isMiddleMouseDown property was read from multiple threads (updateDrag
+on gesture queue) but written on eventQueue without synchronization.
+
+Added stateLock (NSLock) with computed property getter/setter using
+withLock to ensure thread-safe access to the drag state flag.
+
+* refactor: add @MainActor to UI helper classes
+
+WindowHelper and AlertHelper use AppKit APIs (NSEvent.mouseLocation,
+NSScreen.main, NSRunningApplication, NSAlert, NSWorkspace) that require
+main thread execution.
+
+- WindowHelper: Added @MainActor class annotation, Sendable to WindowInfo
+- AlertHelper: Added @MainActor to class and AlertPresenter protocol
+
+* refactor: add Sendable conformance to model types
+
+Mark value types as Sendable for safe cross-isolation transfer:
+
+- GestureModels: GestureState, GestureConfiguration, ModifierKeyType,
+UserPreferences
+- TouchModels: MTPoint, MTVector, MTTouch, TouchState, TrackedFinger
+- GestureRecognizer: GestureData
+
+These are all structs/enums with only Sendable properties, making them
+safe to pass across actor boundaries.
+
+* refactor: update callers for MainActor-isolated helpers
+
+Update call sites to properly invoke @MainActor-isolated WindowHelper
+and AlertHelper methods:
+
+- MultitouchManager: Wrap WindowHelper calls with MainActor.assumeIsolated
+when on main thread, or DispatchQueue.main.sync for background threads
+- AppDelegate: Mark showGestureConfigurationPromptOnFirstLaunch as
+@MainActor and wrap asyncAfter callback with MainActor.assumeIsolated
+
+* test: add @MainActor to test classes for UI components
+
+Tests that call @MainActor-isolated methods must also be MainActor-
+isolated to avoid async context errors:
+
+- WindowHelperTests: @MainActor on test class
+- AlertHelperTests: @MainActor on MockAlertPresenter and test class
+- MenuBarControllerTests: @MainActor on test class
+
+* build: set targeted concurrency checking level
+
+Change SWIFT_STRICT_CONCURRENCY from &apos;complete&apos; to &apos;targeted&apos; at the
+target level for both Debug and Release configurations.
+
+Complete checking fights the architecture constantly for C-callback
+based input processing code. Targeted provides useful warnings without
+demanding full actor isolation on callbacks that can&apos;t be isolated.
+
+Also fix Package.swift: replace invalid enableUpcomingFeature syntax
+with .swiftLanguageMode(.v5) for proper Swift 5 semantics with targeted
+concurrency during documentation generation.
+
+* refactor: add @MainActor to MenuBarController
+
+MenuBarController manages NSStatusItem and NSMenu which are AppKit
+UI components requiring main thread execution.
+
+Also refactor status icon animation to avoid Sendable closure issues
+with NSAnimationContext.runAnimationGroup by using the explicit
+beginGrouping/endGrouping pattern.
+
+* chore: update Package.resolved
+
+* chore: update project configuration and scripts
+
+- Added a new script &quot;watch:css&quot; to package.json for live CSS rebuilding.
+- Removed references to the `swift-docc-plugin` and `snippet-extract` from Package.swift and project.pbxproj, streamlining dependencies.
+- Updated Package.resolved to reflect the removal of the `swift-docc-plugin`.
+
+* fix: mark singleton classes as @unchecked Sendable
+
+These classes use thread-safe internal mechanisms:
+- MultitouchFramework: Stateless C function wrapper
+- PreferencesManager: UserDefaults is thread-safe
+- CrashReporter: Sentry SDK + UserDefaults are thread-safe
+- LaunchAtLoginManager: ServiceManagement APIs are thread-safe
+- UpdateManager: Sparkle accessed from main thread
+
+Also add nonisolated(unsafe) to static shared properties to
+silence Swift 6 concurrency warnings for singleton access.
+
+* fix: add Sendable conformance to core manager classes
+
+- MouseEventGenerator: @unchecked Sendable, uses internal locks
+- AccessibilityMonitor: @unchecked Sendable, timer on main thread
+- MultitouchManager: Clarify pointer lifecycle in async closure
+
+These classes manage their own thread safety through locks and
+dispatch queues, making @unchecked Sendable appropriate.
+
+* fix: resolve AppDelegate typos and unsafe markers
+
+- Fix &apos;references&apos; typo to &apos;preferences&apos;
+- Fix &apos;lunsafe et enabled&apos; typo to &apos;let enabled&apos;
+- Remove stray &apos;unsafe&apos; keyword from LaunchAtLoginManager calls
+- Use string literal for kAXTrustedCheckOptionPrompt to avoid
+global mutable state warning
+
+* chore: remove unused variable binding in MenuBarController
+
+* chore: simplify Package.swift by removing unused swiftSettings for MiddleDrag
+
+* Update README.md
+
+Co-authored-by: Copilot &lt;175728472+Copilot@users.noreply.github.com&gt;
+Signed-off-by: Karan Mohindroo &lt;96403086+NullPointerDepressiveDisorder@users.noreply.github.com&gt;
+
+* fix: use windowID for bundle ID lookup in WindowHelper
+
+When looking up the bundle identifier after finding a window, use
+the windowID from the initial match instead of re-matching by point
+and bounds. This prevents returning the wrong bundle ID when multiple
+windows overlap at the same point.
+
+* fix: use animation completion handler in MenuBarController
+
+Revert to NSAnimationContext.runAnimationGroup with completion handler
+instead of hardcoded asyncAfter delay. This ensures the alpha restoration
+timing stays in sync if animation duration changes.
+
+* fix: remove unnecessary MainActor.assumeIsolated wrapper
+
+AppDelegate is @MainActor and showGestureConfigurationPromptOnFirstLaunch
+is @MainActor, so calling it from DispatchQueue.main.asyncAfter doesn&apos;t
+need the extra isolation wrapper.
+
+* test: add coverage for windowID-based bundle ID lookup
+
+Add 6 new tests verifying the windowID-based lookup logic:
+- testGetWindowAt_WithMockData_OverlappingWindows_UsesWindowIDForBundleLookup
+- testGetWindowAt_WithMockData_WindowIDMatchEnsuresCorrectWindow
+- testGetWindowAt_WithMockData_MultipleWindowsSameSize
+- testGetWindowAt_WithMockData_WindowIDUsedNotPointReMatch
+- testGetWindowAt_NonisolatedMethod_ReturnsNilBundleID
+
+These tests ensure that when looking up bundle identifiers for overlapping
+windows, we use the windowID from the initial match rather than re-searching
+by point, which could return wrong results.
+
+* test: add coverage for getBundleIdentifier lookup
+
+Add injectable bundleIdentifierLookup parameter to getWindowAt for testing.
+The production code passes the real getBundleIdentifier function, while
+tests can inject mock lookups.
+
+New tests verify:
+- Bundle ID is populated when lookup returns a value
+- Correct PID is passed to the lookup function
+- Bundle ID is nil when lookup returns nil
+- Overlapping windows use correct PID (from first match via windowID)
+- Windows without ownerPID don&apos;t call lookup
+- Different PIDs can return different bundle IDs
+
+* test: add coverage for MainActor.assumeIsolated thread-safety patterns
+
+Add 8 tests verifying thread-safety of WindowHelper calls in MultitouchManager:
+
+- testIgnoreDesktopCheckFromMainThread: isCursorOverDesktop from main thread
+- testIgnoreDesktopCheckFromBackgroundThread: isCursorOverDesktop via sync
+- testWindowSizeFilterCheckFromMainThread_Drag: windowAtCursorMeetsMinimumSize
+- testWindowSizeFilterCheckFromBackgroundThread_Drag: same via sync
+- testWindowSizeFilterCheckFromMainThread_Tap: tap variant
+- testWindowSizeFilterCheckFromBackgroundThread_Tap: tap variant via sync
+- testCombinedIgnoreDesktopAndWindowSizeFilterFromBackgroundThread: both
+- testMainActorIsolatedCallsDoNotDeadlock: stress test for deadlock prevention
+
+These tests verify that MainActor.assumeIsolated calls work correctly
+whether called from main thread (direct) or background thread (via
+DispatchQueue.main.sync).
+
+---------
+
+Signed-off-by: Karan Mohindroo &lt;96403086+NullPointerDepressiveDisorder@users.noreply.github.com&gt;
+Co-authored-by: Copilot &lt;175728472+Copilot@users.noreply.github.com&gt;
+---
+**SHA256:** `635caff264724f5d0d36ad9e99d7df7cf4fad37fa4d1e854c7cc429002c22028`]]></description>
+      <enclosure url="https://github.com/NullPointerDepressiveDisorder/MiddleDrag/releases/download/v1.3.8.8/MiddleDrag-1.3.8.8.pkg" sparkle:edSignature="6XRNHylCRDDNp0WUN7ImyoMyk0Mxpc+oF/u9YVbEKjE/nYzZ63mH3uofm+oN4we+5//kVN5VHwOwP2eBTRt4Bg==" length="3448234" type="application/octet-stream" />
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+    </item>
+    <item>
       <title>Version 1.3.8.7</title>
       <pubDate>Fri, 16 Jan 2026 02:58:09 +0000</pubDate>
       <sparkle:version>1.3.8.7</sparkle:version>
