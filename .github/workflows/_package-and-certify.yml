@@ -86,8 +86,9 @@ jobs:
           pkill -x MiddleDrag 2>/dev/null || true
           sleep 1
 
-          # Remove existing app (handles both manual and Homebrew installs)
+          # Remove existing app (handles both manual, macports, and Homebrew installs)
           rm -rf "/Applications/MiddleDrag.app"
+          rm -rf "/Applications/MacPorts/MiddleDrag.app"
 
           # Forget any existing package receipts
           pkgutil --forget app.middledrag.MiddleDrag 2>/dev/null || true
