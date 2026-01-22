@@ -14,6 +14,9 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
+  artifact-metadata: write
 
 jobs:
   package-and-certify:
@@ -130,3 +133,8 @@ jobs:
           name: ${{ steps.package.outputs.pkg-name }}
           path: ${{ steps.package.outputs.pkg-name }}.pkg
           retention-days: 1
+
+      - name: Attest Package
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: ${{ steps.package.outputs.pkg-name }}.pkg
