@@ -6,6 +6,247 @@
     <description>Most recent updates to MiddleDrag</description>
     <language>en</language>
     <item>
+      <title>Version 1.4.0</title>
+      <pubDate>Fri, 23 Jan 2026 10:26:34 +0000</pubDate>
+      <sparkle:version>1.4.0</sparkle:version>
+      <sparkle:shortVersionString>1.4.0</sparkle:shortVersionString>
+      <description><![CDATA[fix: prevent stuck middle-drag when events are swallowed (#78)
+
+* fix: prevent stuck middle-drag when events are swallowed
+
+Fixes #77 - Middle button gets stuck (no MIDDLE_UP) when:
+- App focus changes mid-gesture
+- Windows with nil/empty names (Find My, Finder, Wine apps)
+- Rapid/overlapping gestures cause orphaned MIDDLE_DOWN
+
+Changes:
+- Add double-start guard: cancel existing drag before starting new one
+- Add watchdog timer: auto-release after 10s of inactivity
+- Add activity tracking: record last updateDrag() timestamp
+- Add forceReleaseStuckDrag() API for manual recovery
+- Add &apos;Force Release Stuck Drag&apos; menu item in Advanced menu
+
+The watchdog sends multiple MIDDLE_UP events (sync + async) to ensure
+release even if one is swallowed by problematic windows.
+
+* test: add tests for stuck drag prevention
+
+Add comprehensive tests for new stuck-drag prevention features:
+
+MouseEventGeneratorTests (14 new tests):
+- testDefaultStuckDragTimeout
+- testStuckDragTimeoutCanBeModified
+- testDoubleStartDragCancelsExistingDrag
+- testTripleStartDragHandledGracefully
+- testRapidStartEndCycles
+- testStartDragWhileDraggingThenCancel
+- testUpdateDragResetsActivityTime
+- testWatchdogTimerStartsAndStopsWithDrag
+- testCancelDragStopsWatchdog
+- testVeryShortStuckDragTimeout
+- testActivityPreventsWatchdogTimeout
+- testDoubleStartWithUpdatesInBetween
+
+MultitouchManagerTests (8 new tests):
+- testForceReleaseStuckDragResetsGestureState
+- testForceReleaseStuckDragResetsDraggingState
+- testForceReleaseStuckDragWhenNotDragging
+- testForceReleaseStuckDragMultipleTimes
+- testForceReleaseStuckDragResetsGestureRecognizer
+- testForceReleaseStuckDragWhileDisabled
+- testForceReleaseStuckDragWhenStopped
+- testForceReleaseAfterNormalEndDrag
+
+* fix: address thread safety issues in stuck drag prevention
+
+Address Copilot-identified race conditions in watchdog and force release:
+
+MouseEventGenerator.swift:
+- Add dragGeneration token to prevent async cleanup from affecting new drags
+- Synchronize all watchdogTimer access on watchdogQueue
+- Add stopWatchdogLocked() for internal calls already on watchdogQueue
+- Add forceMiddleMouseUp() for unconditional MIDDLE_UP (always sends)
+- Mark Sentry logging as unsafe for Swift 6 concurrency
+
+MultitouchManager.swift:
+- Wrap forceReleaseStuckDrag() in DispatchQueue.main.async to match
+other gesture state updates and avoid data races
+- Use forceMiddleMouseUp() instead of cancelDrag() to ensure UP is
+sent even when internal state shows drag already ended
+
+Fixes:
+1. watchdogTimer data race from multi-thread access
+2. Async force-release interfering with newly started drags
+3. forceReleaseStuckDrag not sending UP when state already false
+4. forceReleaseStuckDrag mutating state off main thread
+
+* fix: protect dragGeneration with stateLock to prevent race condition
+
+AI-identified bug: dragGeneration was accessed from multiple threads
+without synchronization, creating a race between startDrag() on the
+gesture thread and forceReleaseDrag() on watchdogQueue.
+
+Race scenario:
+1. startDrag() increments generation and sets isMiddleMouseDown=true
+2. forceReleaseDrag() reads NEW generation, sets isMiddleMouseDown=false
+3. Result: forceReleaseDrag&apos;s async cleanup matches generation and
+sends MIDDLE_UP to the NEW drag, breaking it
+
+Fix:
+- Move dragGeneration to be protected by stateLock (as _dragGeneration)
+- Make increment + flag set atomic in startDrag()
+- Make read + flag clear atomic in forceReleaseDrag()
+- Update forceMiddleMouseUp() with same atomic pattern
+
+This ensures the generation token and drag state are always consistent.
+
+* fix: prevent watchdog from clobbering new drag during double-start race
+
+AI-identified bug: When a second startDrag() occurs ~10s after first (during
+watchdog timeout check), a race condition causes the old watchdog&apos;s
+forceReleaseDrag() to interfere with the new drag.
+
+Race scenario:
+1. Old watchdog&apos;s checkForStuckDrag() sees isMiddleMouseDown=true (old drag)
+2. New startDrag() runs: sends UP, increments generation to N+1, sends DOWN
+3. Old watchdog&apos;s forceReleaseDrag() runs:
+- Reads generation=N+1 (the NEW one!)
+- Sets isMiddleMouseDown=false (clobbers new drag!)
+- Sends MIDDLE_UP (kills new drag!)
+
+Result: UP -&gt; DOWN -&gt; UP = stuck button
+
+Fix:
+- checkForStuckDrag() now atomically captures BOTH isMiddleMouseDown AND
+generation together, passing the generation to forceReleaseDrag()
+- forceReleaseDrag() now takes expectedGeneration parameter and verifies
+current generation matches before clearing state or sending events
+- If generation doesn&apos;t match, a new drag started and we abort silently
+
+This ensures the watchdog only affects the drag session it was checking.
+---
+**SHA256:** `7e6fb32d94a8475d5abf0a67009c59043f180f04b52f5e33fb9f24dae10df964`
+
+fix: prevent stuck middle-drag when events are swallowed (#78)
+
+* fix: prevent stuck middle-drag when events are swallowed
+
+Fixes #77 - Middle button gets stuck (no MIDDLE_UP) when:
+- App focus changes mid-gesture
+- Windows with nil/empty names (Find My, Finder, Wine apps)
+- Rapid/overlapping gestures cause orphaned MIDDLE_DOWN
+
+Changes:
+- Add double-start guard: cancel existing drag before starting new one
+- Add watchdog timer: auto-release after 10s of inactivity
+- Add activity tracking: record last updateDrag() timestamp
+- Add forceReleaseStuckDrag() API for manual recovery
+- Add &apos;Force Release Stuck Drag&apos; menu item in Advanced menu
+
+The watchdog sends multiple MIDDLE_UP events (sync + async) to ensure
+release even if one is swallowed by problematic windows.
+
+* test: add tests for stuck drag prevention
+
+Add comprehensive tests for new stuck-drag prevention features:
+
+MouseEventGeneratorTests (14 new tests):
+- testDefaultStuckDragTimeout
+- testStuckDragTimeoutCanBeModified
+- testDoubleStartDragCancelsExistingDrag
+- testTripleStartDragHandledGracefully
+- testRapidStartEndCycles
+- testStartDragWhileDraggingThenCancel
+- testUpdateDragResetsActivityTime
+- testWatchdogTimerStartsAndStopsWithDrag
+- testCancelDragStopsWatchdog
+- testVeryShortStuckDragTimeout
+- testActivityPreventsWatchdogTimeout
+- testDoubleStartWithUpdatesInBetween
+
+MultitouchManagerTests (8 new tests):
+- testForceReleaseStuckDragResetsGestureState
+- testForceReleaseStuckDragResetsDraggingState
+- testForceReleaseStuckDragWhenNotDragging
+- testForceReleaseStuckDragMultipleTimes
+- testForceReleaseStuckDragResetsGestureRecognizer
+- testForceReleaseStuckDragWhileDisabled
+- testForceReleaseStuckDragWhenStopped
+- testForceReleaseAfterNormalEndDrag
+
+* fix: address thread safety issues in stuck drag prevention
+
+Address Copilot-identified race conditions in watchdog and force release:
+
+MouseEventGenerator.swift:
+- Add dragGeneration token to prevent async cleanup from affecting new drags
+- Synchronize all watchdogTimer access on watchdogQueue
+- Add stopWatchdogLocked() for internal calls already on watchdogQueue
+- Add forceMiddleMouseUp() for unconditional MIDDLE_UP (always sends)
+- Mark Sentry logging as unsafe for Swift 6 concurrency
+
+MultitouchManager.swift:
+- Wrap forceReleaseStuckDrag() in DispatchQueue.main.async to match
+other gesture state updates and avoid data races
+- Use forceMiddleMouseUp() instead of cancelDrag() to ensure UP is
+sent even when internal state shows drag already ended
+
+Fixes:
+1. watchdogTimer data race from multi-thread access
+2. Async force-release interfering with newly started drags
+3. forceReleaseStuckDrag not sending UP when state already false
+4. forceReleaseStuckDrag mutating state off main thread
+
+* fix: protect dragGeneration with stateLock to prevent race condition
+
+AI-identified bug: dragGeneration was accessed from multiple threads
+without synchronization, creating a race between startDrag() on the
+gesture thread and forceReleaseDrag() on watchdogQueue.
+
+Race scenario:
+1. startDrag() increments generation and sets isMiddleMouseDown=true
+2. forceReleaseDrag() reads NEW generation, sets isMiddleMouseDown=false
+3. Result: forceReleaseDrag&apos;s async cleanup matches generation and
+sends MIDDLE_UP to the NEW drag, breaking it
+
+Fix:
+- Move dragGeneration to be protected by stateLock (as _dragGeneration)
+- Make increment + flag set atomic in startDrag()
+- Make read + flag clear atomic in forceReleaseDrag()
+- Update forceMiddleMouseUp() with same atomic pattern
+
+This ensures the generation token and drag state are always consistent.
+
+* fix: prevent watchdog from clobbering new drag during double-start race
+
+AI-identified bug: When a second startDrag() occurs ~10s after first (during
+watchdog timeout check), a race condition causes the old watchdog&apos;s
+forceReleaseDrag() to interfere with the new drag.
+
+Race scenario:
+1. Old watchdog&apos;s checkForStuckDrag() sees isMiddleMouseDown=true (old drag)
+2. New startDrag() runs: sends UP, increments generation to N+1, sends DOWN
+3. Old watchdog&apos;s forceReleaseDrag() runs:
+- Reads generation=N+1 (the NEW one!)
+- Sets isMiddleMouseDown=false (clobbers new drag!)
+- Sends MIDDLE_UP (kills new drag!)
+
+Result: UP -&gt; DOWN -&gt; UP = stuck button
+
+Fix:
+- checkForStuckDrag() now atomically captures BOTH isMiddleMouseDown AND
+generation together, passing the generation to forceReleaseDrag()
+- forceReleaseDrag() now takes expectedGeneration parameter and verifies
+current generation matches before clearing state or sending events
+- If generation doesn&apos;t match, a new drag started and we abort silently
+
+This ensures the watchdog only affects the drag session it was checking.
+---
+**SHA256:** `1ba647772a7c88f924d0c79b2ebde3f227743aa485b4787fee6d03509ed698cb`]]></description>
+      <enclosure url="https://github.com/NullPointerDepressiveDisorder/MiddleDrag/releases/download/v1.4.0/MiddleDrag-1.4.0.pkg" sparkle:edSignature="UcJMs7EoCW8LXJmL1GVm/F4E1V3Sf7OJ4fC1cVgi6fopl9huUsu8tbsYIUb7k+UIqH0N2ywOaBcdGrbxAY7lBA==" length="3466879" type="application/octet-stream" />
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+    </item>
+    <item>
       <title>Version 1.3.8.9</title>
       <pubDate>Thu, 22 Jan 2026 05:02:11 +0000</pubDate>
       <sparkle:version>1.3.8.9</sparkle:version>
