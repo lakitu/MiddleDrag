@@ -19,7 +19,10 @@ on:
       new-sha:
         description: The commit SHA after any version bump
         value: ${{ jobs.resolve.outputs.new-sha }}
-
+      kill-pipeline:
+        description: Whether to kill the pipeline (true/false)
+        value: ${{ jobs.resolve.outputs.kill-pipeline }}
+      
 permissions:
   contents: write
 
@@ -30,6 +33,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.VERSION }}
       new-sha: ${{ steps.bump.outputs.NEW_SHA }}
+      kill-pipeline: ${{ steps.bump.outputs.kill-pipeline }}
 
     steps:
       - name: Generate App Token
@@ -78,6 +82,7 @@ jobs:
 
           if [ "$VERSION" != "$PROJECT_VERSION" ]; then
             echo "Version mismatch ($PROJECT_VERSION vs $VERSION). Bumping..."
+            echo "KILL_PIPELINE=true" >> $GITHUB_OUTPUT
 
             # Determine the branch to update
             if [[ "$GITHUB_REF" == refs/heads/* ]]; then
@@ -108,6 +113,7 @@ jobs:
           else
             echo "Version matches. Proceeding..."
             echo "NEW_SHA=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+            echo "KILL_PIPELINE=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Output Final Version
@@ -116,3 +122,10 @@ jobs:
           VERSION="${{ steps.determine.outputs.VERSION }}"
           echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
           echo "Using version: ${VERSION}"
+
+      - name: Kill Pipeline if No Bump
+        id: kill-check
+        if: steps.bump.outputs.KILL_PIPELINE == 'true'
+        run: |
+          KILL_PIPELINE="${{ steps.bump.outputs.KILL_PIPELINE }}"
+          echo "KILL_PIPELINE=${KILL_PIPELINE}" >> $GITHUB_OUTPUT
