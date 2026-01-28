@@ -103,7 +103,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             LaunchAtLoginManager.shared.setLaunchAtLogin(true)
         }
 
-        // Initialize update manager (offline by default, respects user preference)
+        // Initialize update manager (it handles its own internal deferral to avoid
+        // blocking the main thread during Sparkle's synchronous operations)
         UpdateManager.shared.initialize()
 
         // Check for gesture conflicts and show prompt on first launch if needed
