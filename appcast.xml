@@ -6,6 +6,28 @@
     <description>Most recent updates to MiddleDrag</description>
     <language>en</language>
     <item>
+      <title>Version 1.4.1.2</title>
+      <pubDate>Sat, 31 Jan 2026 20:16:33 +0000</pubDate>
+      <sparkle:version>1.4.1.2</sparkle:version>
+      <sparkle:shortVersionString>1.4.1.2</sparkle:shortVersionString>
+      <description><![CDATA[Fix/use after free (#93)
+
+* Fix use-after-free issue by copying touch data synchronously in DeviceMonitorDelegate
+
+* Fix race conditions in restart handling by ensuring thread-safe access to restart state and work items
+
+* Ensure thread safety in UI animations by using MainActor in MenuBarController
+
+* Improve touch processing in MultitouchManager to handle zero touches and ensure gesture recognizer stability
+---
+**SHA256:** `d4c2c5fecdc2419954491edde356c2fd19281ee2c08e668ed8b05385dc532436`
+
+
+[![Download MiddleDrag](https://a.fsdn.com/con/app/sf-download-button)](https://sourceforge.net/projects/middledrag.mirror/files/v1.4.1.2/MiddleDrag-1.4.1.2.pkg/download)]]></description>
+      <enclosure url="https://github.com/NullPointerDepressiveDisorder/MiddleDrag/releases/download/v1.4.1.2/MiddleDrag-1.4.1.2.pkg" sparkle:edSignature="eqdvgIiS+bwA76bMvZha/UHBgXMILyTNnwsZs3XF2lgi+lPJxZ5UtWreLCaqFNV0Z3+FXiyB4MoP8oSmRhLfAg==" length="3497112" type="application/octet-stream" />
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+    </item>
+    <item>
       <title>Version 1.4.1.1</title>
       <pubDate>Wed, 28 Jan 2026 22:50:29 +0000</pubDate>
       <sparkle:version>1.4.1.1</sparkle:version>
