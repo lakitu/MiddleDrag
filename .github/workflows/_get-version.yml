@@ -82,7 +82,7 @@ jobs:
 
           if [ "$VERSION" != "$PROJECT_VERSION" ]; then
             echo "Version mismatch ($PROJECT_VERSION vs $VERSION). Bumping..."
-            echo "KILL_PIPELINE=true" >> $GITHUB_OUTPUT
+            echo "kill-pipeline=true" >> $GITHUB_OUTPUT
 
             # Determine the branch to update
             if [[ "$GITHUB_REF" == refs/heads/* ]]; then
@@ -113,7 +113,7 @@ jobs:
           else
             echo "Version matches. Proceeding..."
             echo "NEW_SHA=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
-            echo "KILL_PIPELINE=false" >> $GITHUB_OUTPUT
+            echo "kill-pipeline=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Output Final Version
@@ -125,7 +125,6 @@ jobs:
 
       - name: Kill Pipeline if No Bump
         id: kill-check
-        if: steps.bump.outputs.KILL_PIPELINE == 'true'
+        if: steps.bump.outputs.kill-pipeline == 'true'
         run: |
-          KILL_PIPELINE="${{ steps.bump.outputs.KILL_PIPELINE }}"
-          echo "KILL_PIPELINE=${KILL_PIPELINE}" >> $GITHUB_OUTPUT
+          echo "Pipeline will be killed due to version bump"
