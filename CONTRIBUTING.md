@@ -79,6 +79,54 @@ Feature requests are welcome! Please:
 
 5. Push and open a Pull Request
 
+### Keeping Your Branch Up to Date
+
+If your PR shows "This branch has conflicts that must be resolved" or has fallen behind `main`, you'll need to update your branch before it can be merged.
+
+**Option 1: Rebase (preferred for clean history)**
+
+```bash
+# Add upstream remote if you haven't already (for forks)
+git remote add upstream https://github.com/NullPointerDepressiveDisorder/MiddleDrag.git
+
+# Fetch latest changes
+git fetch upstream
+
+# Rebase your branch on main
+git checkout your-branch-name
+git rebase upstream/main
+
+# If there are conflicts, Git will pause and show which files need resolution
+# Edit the files to resolve conflicts, then:
+git add <resolved-files>
+git rebase --continue
+
+# Force push your updated branch (required after rebase)
+git push --force-with-lease
+```
+
+**Option 2: Merge (simpler but creates merge commits)**
+
+```bash
+git fetch upstream
+git checkout your-branch-name
+git merge upstream/main
+
+# Resolve any conflicts, then:
+git add <resolved-files>
+git commit
+git push
+```
+
+**Tips for resolving conflicts:**
+- Look for `<<<<<<<`, `=======`, and `>>>>>>>` markers in conflicted files
+- The code between `<<<<<<<` and `=======` is your version
+- The code between `=======` and `>>>>>>>` is from main
+- Edit the file to combine both changes appropriately, then remove all marker lines
+- Run `git diff --check` to verify no conflict markers remain
+
+If you're unsure how to resolve a conflict, feel free to ask for help in the PR comments.
+
 ## Code Style
 
 ### Swift Guidelines
