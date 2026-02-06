@@ -90,10 +90,11 @@ class DeviceMonitor: TouchDeviceProviding {
     /// Delay between unregistering callbacks and stopping devices.
     /// This allows the MultitouchSupport framework's internal thread (mt_ThreadedMTEntry)
     /// to complete any in-flight callback processing before we stop devices.
-    /// Value determined empirically: 100ms is sufficient to avoid CFRelease(NULL) crashes
-    /// and EXC_BREAKPOINT exceptions while keeping the stop operation reasonably fast.
-    /// Increased from 50ms to handle rapid foreground/background toggling scenarios.
-    static let frameworkCleanupDelay: TimeInterval = 0.1
+    /// Value determined empirically: 500ms is sufficient to avoid CFRelease(NULL) crashes
+    /// and EXC_BREAKPOINT exceptions during rapid connectivity changes (wifi ↔ none).
+    /// Increased from 100ms to handle rapid connectivity toggling that triggers multiple
+    /// restart cycles in quick succession.
+    static let frameworkCleanupDelay: TimeInterval = 0.5
 
     // MARK: - Properties
 
@@ -266,9 +267,14 @@ class DeviceMonitor: TouchDeviceProviding {
         // This sleep is intentionally done with lock unlocked to avoid blocking other threads.
         unsafe Thread.sleep(forTimeInterval: Self.frameworkCleanupDelay)
 
-        // Now safe to stop devices
+        // Now safe to stop devices. Acquire lock before each MTDeviceStop to ensure
+        // the framework's internal thread (mt_ThreadedMTEntry) cannot access the device
+        // during the critical stop operation. This prevents CFRelease(NULL) crashes
+        // from the framework trying to release device resources concurrently.
         for unsafe deviceRef in unsafe devicesToStop {
+            unsafe os_unfair_lock_lock(&gCallbackLock)
             unsafe MTDeviceStop(deviceRef)
+            unsafe os_unfair_lock_unlock(&gCallbackLock)
         }
 
         Log.info("DeviceMonitor stopped", category: .device)
