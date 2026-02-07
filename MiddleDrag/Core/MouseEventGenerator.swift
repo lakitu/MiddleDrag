@@ -48,6 +48,29 @@ final class MouseEventGenerator: @unchecked Sendable {
     // Smoothing state for EMA (exponential moving average)
     private var previousDeltaX: CGFloat = 0
     private var previousDeltaY: CGFloat = 0
+    
+    // Click deduplication: tracks last click time on the serial eventQueue
+    // to prevent multiple performClick() calls from different code paths
+    // (force-click conversion + gesture tap) from firing within a short window.
+    // Thread-safe because it's only read/written on eventQueue.
+    // Internal access for testability.
+    internal var lastClickTime: CFTimeInterval = 0
+    internal var clickDeduplicationWindow: CFTimeInterval = 0.15  // 150ms
+    
+    // Click counter for testing: _clickCount is incremented on eventQueue each time
+    // a click is actually emitted. Use the clickCount property to read safely from
+    // other threads (it dispatches sync to eventQueue).
+    private var _clickCount: Int = 0
+    
+    /// Thread-safe click count. Reading syncs to eventQueue; reset from tests before async work.
+    internal var clickCount: Int {
+        get { eventQueue.sync { _clickCount } }
+    }
+    
+    /// Reset click count — call only when no async work is in flight (e.g., setUp).
+    internal func resetClickCount() {
+        eventQueue.sync { _clickCount = 0 }
+    }
 
     // MARK: - Initialization
 
@@ -199,6 +222,17 @@ final class MouseEventGenerator: @unchecked Sendable {
                 // This prevents glitches during drag operations
                 return
             }
+            
+            // Deduplication: prevent double-clicks from multiple code paths.
+            // Both the force-click conversion (event tap intercepting left clicks with 3 fingers)
+            // and the gesture recognizer tap detection can call performClick() for the same
+            // physical user action. Since both dispatch here on the serial eventQueue, this
+            // timestamp check reliably deduplicates them.
+            let now = CACurrentMediaTime()
+            if now - self.lastClickTime < self.clickDeduplicationWindow {
+                return
+            }
+            self.lastClickTime = now
 
             let clickLocation = self.currentMouseLocationQuartz
 
@@ -233,6 +267,7 @@ final class MouseEventGenerator: @unchecked Sendable {
             upEvent.flags = []
 
             // Post events with small delay between them
+            self._clickCount += 1
             downEvent.post(tap: .cghidEventTap)
             usleep(10000)  // 10ms delay
             upEvent.post(tap: .cghidEventTap)
