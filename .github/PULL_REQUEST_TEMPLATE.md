@@ -24,8 +24,7 @@
 - [ ] Tested with built-in trackpad
 - [ ] Tested with Magic Trackpad (if available)
 - [ ] Verified system gestures (Mission Control, etc.) still work
-- [ ] Tested in target apps (list any specific apps tested):
-  - 
+- [ ] Tested in target apps (list any specific apps tested): 
 
 ## Checklist
 
