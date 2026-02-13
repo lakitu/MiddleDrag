@@ -55,6 +55,13 @@ final class MouseEventGenerator: @unchecked Sendable {
     private var previousDeltaX: CGFloat = 0
     private var previousDeltaY: CGFloat = 0
     
+    // Accumulated drag position: seeded at startDrag from the real cursor,
+    // then advanced purely by adding deltas. Used as the event position field
+    // (for apps like Fusion 360 that read absolute position) and as the warp
+    // target (to move the visible cursor while disassociated).
+    // Internal access for testability.
+    internal var lastDragPosition: CGPoint = .zero
+    
     // Click deduplication: tracks last click time on the serial eventQueue
     // to prevent multiple performClick() calls from different code paths
     // (force-click conversion + gesture tap) from firing within a short window.
@@ -78,6 +85,21 @@ final class MouseEventGenerator: @unchecked Sendable {
         eventQueue.sync { _clickCount = 0 }
     }
 
+    // MARK: - Cursor Association
+    
+    /// Re-associate mouse with cursor after drag ends.
+    /// Restores normal cursor behavior and default suppression interval.
+    private func reassociateCursor() {
+        guard shouldPostEvents else { return }
+        let error = CGAssociateMouseAndMouseCursorPosition(1)
+        if error != CGError.success {
+            Log.warning(unsafe "Failed to re-associate cursor: \(error.rawValue)", category: .gesture)
+        }
+        if let source = eventSource {
+            source.localEventsSuppressionInterval = 0.25
+        }
+    }
+
     // MARK: - Initialization
 
     init() {
@@ -90,9 +112,18 @@ final class MouseEventGenerator: @unchecked Sendable {
     /// Start a middle mouse drag operation
     /// - Parameter screenPosition: Starting position (used for reference, actual position from current cursor)
     func startDrag(at screenPosition: CGPoint) {
-        // CRITICAL: If already in a drag state, cancel it first to prevent stuck drags
-        // This handles the case where a second MIDDLE_DOWN arrives before the first MIDDLE_UP
-        if isMiddleMouseDown {
+        // CRITICAL: If already in a drag state, cancel it first to prevent stuck drags.
+        // Recovery must re-associate + clear state + invalidate generation atomically
+        // so watchdog force-release cannot win a race and reassociate after we
+        // disassociate for the new drag.
+        let recoveredExistingDrag = stateLock.withLock {
+            guard _isMiddleMouseDown else { return false }
+            reassociateCursor()
+            _isMiddleMouseDown = false
+            _dragGeneration &+= 1  // Invalidate any watchdog release in-flight for old drag
+            return true
+        }
+        if recoveredExistingDrag {
             Log.warning("startDrag called while already dragging - canceling existing drag first", category: .gesture)
             // Send mouse up for the existing drag immediately (synchronously)
             let currentPos = currentMouseLocationQuartz
@@ -104,6 +135,25 @@ final class MouseEventGenerator: @unchecked Sendable {
         // Reset smoothing state
         previousDeltaX = 0
         previousDeltaY = 0
+        
+        // Seed accumulated drag position from actual cursor
+        lastDragPosition = quartzPos
+        
+        // Disassociate mouse from cursor so the window server won't fight with our
+        // position field. The cursor freezes; we warp it ourselves each frame.
+        // This lets us set both absolute position (for Fusion 360) and deltas (for
+        // Blender/Unity) on the same event without causing micro-stutter.
+        if shouldPostEvents {
+            let error = CGAssociateMouseAndMouseCursorPosition(0)
+            if error != CGError.success {
+                Log.warning(unsafe "Failed to disassociate cursor: \(error.rawValue)", category: .gesture)
+            }
+            // Zero the suppression interval so our high-frequency synthetic events
+            // don't suppress each other (default is 0.25s which eats events)
+            if let source = eventSource {
+                source.localEventsSuppressionInterval = 0
+            }
+        }
         
         // Record activity time for watchdog
         activityLock.lock()
@@ -162,11 +212,21 @@ final class MouseEventGenerator: @unchecked Sendable {
             return
         }
 
-        let currentPos = currentMouseLocationQuartz
-        let targetPos = CGPoint(
-            x: currentPos.x + smoothedDeltaX,
-            y: currentPos.y + smoothedDeltaY
+        // Advance accumulated position by smoothed deltas
+        var targetPos = CGPoint(
+            x: lastDragPosition.x + smoothedDeltaX,
+            y: lastDragPosition.y + smoothedDeltaY
         )
+        
+        // Clamp to global display bounds to prevent the accumulated position from drifting
+        // off-screen. Without this, dragging past a screen edge creates a dead zone
+        // when reversing direction (the position must travel back the full overshoot
+        // before the cursor visibly moves). CGWarpMouseCursorPosition does not clamp.
+        let globalBounds = Self.globalDisplayBounds
+        targetPos.x = max(globalBounds.minX, min(targetPos.x, globalBounds.maxX - 1))
+        targetPos.y = max(globalBounds.minY, min(targetPos.y, globalBounds.maxY - 1))
+        
+        lastDragPosition = targetPos
         
         guard shouldPostEvents else { return }
         guard
@@ -178,27 +238,36 @@ final class MouseEventGenerator: @unchecked Sendable {
             )
         else { return }
 
-        // Set deltas for macOS cursor movement; position field for apps that read it
-        event.setDoubleValueField(.mouseEventDeltaX, value: Double(smoothedDeltaX))
-        event.setDoubleValueField(.mouseEventDeltaY, value: Double(smoothedDeltaY))
+        // mouseEventDeltaX/Y are effectively integral in Quartz event storage.
+        // Writing via setDoubleValueField does not preserve fractional precision, so
+        // emit rounded integer deltas explicitly (better than implicit truncation).
+        event.setIntegerValueField(.mouseEventDeltaX, value: Int64(smoothedDeltaX.rounded()))
+        event.setIntegerValueField(.mouseEventDeltaY, value: Int64(smoothedDeltaY.rounded()))
         
         event.setIntegerValueField(.mouseEventButtonNumber, value: 2)
         event.setIntegerValueField(.eventSourceUserData, value: magicUserData)
         event.flags = []
         event.post(tap: .cghidEventTap)
+        
+        // Warp the visible cursor to match the accumulated position.
+        // The cursor is frozen (disassociated) so the event's position field
+        // won't move it — we must warp explicitly.
+        CGWarpMouseCursorPosition(targetPos)
     }
-
-    /// End the drag operation
     func endDrag() {
         guard isMiddleMouseDown else { return }
         
         // Stop watchdog since drag is ending normally
         stopWatchdog()
-
-        // CRITICAL: Set isMiddleMouseDown = false SYNCHRONOUSLY to match startDrag
-        // This prevents race conditions with rapid start/end cycles and ensures
-        // updateDrag() stops processing immediately
-        isMiddleMouseDown = false
+        
+        // CRITICAL: Re-associate cursor and clear drag state atomically.
+        // Today endDrag() is called on gestureQueue, but matching the atomic teardown
+        // used by cancel/force paths prevents future callers from introducing races
+        // where stale reassociation can desync cursor association from drag state.
+        stateLock.withLock {
+            reassociateCursor()
+            _isMiddleMouseDown = false
+        }
 
         eventQueue.async { [weak self] in
             guard let self = self else { return }
@@ -289,10 +358,14 @@ final class MouseEventGenerator: @unchecked Sendable {
         // Stop watchdog since drag is being cancelled
         stopWatchdog()
 
-        // CRITICAL: Set isMiddleMouseDown = false SYNCHRONOUSLY to match startDrag
-        // This prevents race conditions with rapid cancel/start cycles and ensures
-        // updateDrag() stops processing immediately
-        isMiddleMouseDown = false
+        // CRITICAL: Re-associate cursor and clear drag state atomically.
+        // If reassociateCursor() runs outside stateLock, a concurrent startDrag()
+        // can disassociate for a new drag and then be overwritten by a stale
+        // reassociation, leaving cursor association out of sync with drag state.
+        stateLock.withLock {
+            reassociateCursor()
+            _isMiddleMouseDown = false
+        }
 
         // Asynchronously send the mouse up event and clean up state
         // The cleanup will happen on the event queue, ensuring proper sequencing
@@ -314,9 +387,12 @@ final class MouseEventGenerator: @unchecked Sendable {
         
         // Stop watchdog if running
         stopWatchdog()
-        
-        // Atomically reset state and capture generation
+
+        // CRITICAL: Re-associate cursor and clear drag state atomically with generation.
+        // This mirrors forceReleaseDrag() and prevents interleaving where startDrag()
+        // disassociates for a new session between reassociation and state update.
         let currentGeneration: UInt64 = stateLock.withLock {
+            reassociateCursor()
             _isMiddleMouseDown = false
             return _dragGeneration
         }
@@ -342,6 +418,53 @@ final class MouseEventGenerator: @unchecked Sendable {
     }
 
     // MARK: - Coordinate Conversion
+    
+    /// Union of all online display rects in Quartz global coordinates.
+    /// Cached to avoid per-frame syscalls and heap allocation at 100Hz+.
+    /// Invalidated on display reconfiguration via CGDisplayRegisterReconfigurationCallback.
+    /// Internal access for testability.
+    private static let displayBoundsLock = NSLock()
+    nonisolated(unsafe) private static var _cachedDisplayBounds: CGRect?
+    nonisolated(unsafe) private static var _displayReconfigToken: Bool = {
+        // Register for display changes (resolution, arrangement, connect/disconnect).
+        // The callback invalidates the cache so the next read picks up the new geometry.
+        CGDisplayRegisterReconfigurationCallback({ _, flags, _ in
+            // Only invalidate after the reconfiguration completes
+            if flags.contains(.beginConfigurationFlag) { return }
+            MouseEventGenerator.displayBoundsLock.lock()
+            MouseEventGenerator._cachedDisplayBounds = nil
+            MouseEventGenerator.displayBoundsLock.unlock()
+        }, nil)
+        return true
+    }()
+    
+    internal static var globalDisplayBounds: CGRect {
+        _ = _displayReconfigToken  // Ensure callback is registered
+        
+        displayBoundsLock.lock()
+        if let cached = _cachedDisplayBounds {
+            displayBoundsLock.unlock()
+            return cached
+        }
+        displayBoundsLock.unlock()
+        
+        // Compute outside lock (CGGetOnlineDisplayList is thread-safe)
+        var displayIDs = [CGDirectDisplayID](repeating: 0, count: 16)
+        var displayCount: UInt32 = 0
+        CGGetOnlineDisplayList(16, &displayIDs, &displayCount)
+        
+        var union = CGRect.null
+        for i in 0..<Int(displayCount) {
+            union = union.union(CGDisplayBounds(displayIDs[i]))
+        }
+        let result = union == .null ? CGRect(x: 0, y: 0, width: 1920, height: 1080) : union
+        
+        displayBoundsLock.lock()
+        _cachedDisplayBounds = result
+        displayBoundsLock.unlock()
+        
+        return result
+    }
 
     /// Reads mouse location via AppKit on the main thread and converts to Quartz coordinates.
     /// AppKit APIs like NSEvent/NSScreen are not thread-safe and must not be read off-main.
@@ -520,15 +643,20 @@ final class MouseEventGenerator: @unchecked Sendable {
     private func forceReleaseDrag(forGeneration expectedGeneration: UInt64) {
         stopWatchdogLocked()
         
-        // CRITICAL: Verify generation still matches before clearing state
-        // This prevents race where a new drag started between checkForStuckDrag() and now
+        // CRITICAL: Verify generation, clear state, AND re-associate cursor atomically.
+        // If we release the lock between setting _isMiddleMouseDown = false and calling
+        // reassociateCursor(), a concurrent startDrag on the gesture queue could
+        // disassociate the cursor for a new drag, then our reassociateCursor() would
+        // undo it — causing double-speed movement in the new drag.
+        // CGAssociateMouseAndMouseCursorPosition is a fast syscall (~microseconds),
+        // safe to call under lock.
         let releasedGeneration: UInt64? = stateLock.withLock {
             guard _dragGeneration == expectedGeneration else {
-                // A new drag has started - don't interfere with it!
                 Log.info("forceReleaseDrag aborted - new drag session started (expected gen \(expectedGeneration), current \(_dragGeneration))", category: .gesture)
                 return nil
             }
             _isMiddleMouseDown = false
+            reassociateCursor()
             return _dragGeneration
         }
         
